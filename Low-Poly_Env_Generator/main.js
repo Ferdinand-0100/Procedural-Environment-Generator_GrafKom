@@ -178,6 +178,27 @@ dir.position.set(5, 10, 7);
 dir.castShadow = true;
 scene.add(dir);
 
+// Water
+const waterLevel = -0.6;
+const waterGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 1, 1);
+const waterMat = new THREE.MeshStandardMaterial({
+    color: 0x1e90ff,
+    flatShading: true,
+    transparent: true,
+    opacity: 0.6,
+});
+const water = new THREE.Mesh(waterGeo, waterMat);
+water.rotation.x = -Math.PI / 2;
+water.position.y = waterLevel;
+water.receiveShadow = true;
+scene.add(water);
+
+const waterClock = new THREE.Clock();
+function updateWater() {
+    const t = waterClock.getElapsedTime();
+    water.position.y = waterLevel + Math.sin(t * 0.5) * 0.05; // subtle up-down
+}
+
 // Camera
 camera.position.set(6, 5, 6);
 camera.lookAt(0, 0, 0);
@@ -185,6 +206,7 @@ camera.lookAt(0, 0, 0);
 // Animation
 function animate() {
     requestAnimationFrame(animate);
+    updateWater();
     renderer.render(scene, camera);
 }
 animate();
