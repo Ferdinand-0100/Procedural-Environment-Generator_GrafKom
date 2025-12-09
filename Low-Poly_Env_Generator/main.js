@@ -322,7 +322,7 @@ function createParticles(type) {
 
     let count = 850;
     if (type === "rain") count = Math.floor(850 * 1.5);
-    if (type === "snow") count = 850;
+    if (type === "snow") count = 1200;
 
     particleGeometry = new THREE.BufferGeometry();
     const positions = [];
@@ -366,6 +366,7 @@ function updateParticles(delta) {
 
     particles.geometry.attributes.position.needsUpdate = true;
 }
+
 function updateSkyColor(color) {
     sky.material.color.set(color);
     sky.material.needsUpdate = true;
@@ -452,7 +453,8 @@ const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
 
-    const delta = clock.getDelta();
+    let delta = clock.getDelta();
+    delta = Math.min(delta, 0.1);
 
     updateWater();
     updateParticles(delta);
