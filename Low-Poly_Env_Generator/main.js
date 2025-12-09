@@ -244,6 +244,10 @@ function updateWater() {
     water.position.y = waterLevel + Math.sin(t * 0.5) * 0.05; // subtle up-down
 }
 
+// Improved Clouds
+const clouds = [];
+const maxClouds = 12;
+
 function createCloud(x, y, z, scale = 1) {
     const cloud = new THREE.Group();
     const numCubes = 6 + Math.floor(Math.random() * 6);
@@ -252,22 +256,42 @@ function createCloud(x, y, z, scale = 1) {
         const geo = new THREE.BoxGeometry(1, 1, 1);
         const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true });
         const cube = new THREE.Mesh(geo, mat);
-
         cube.position.set(
             (Math.random() - 0.5) * 3,
             (Math.random() - 0.5) * 1,
             (Math.random() - 0.5) * 3
         );
-
         cube.scale.setScalar(0.5 + Math.random() * 0.7);
         cloud.add(cube);
     }
 
     cloud.position.set(x, y, z);
     cloud.scale.setScalar(scale);
+    cloud.userData = { speed: 0.5 + Math.random() * 0.5 };
     scene.add(cloud);
+    clouds.push(cloud);
+    return cloud;
 }
 
+function updateClouds(delta) {
+    for (let i = clouds.length - 1; i >= 0; i--) {
+        const cloud = clouds[i];
+        cloud.position.x += cloud.userData.speed * delta;
+
+        if (cloud.position.x > terrainSize/2 + 5) {
+            scene.remove(cloud);
+            clouds.splice(i, 1);
+        }
+    }
+
+    while (clouds.length < maxClouds) {
+        const x = -terrainSize/2 - 5;
+        const y = 10 + Math.random() * 10;
+        const z = (Math.random() - 0.5) * terrainSize * 0.8;
+        const scale = 1 + Math.random() * 2;
+        createCloud(x, y, z, scale);
+    }
+}
 
 const numClouds = 8 + Math.floor(Math.random() * 6);
 
@@ -352,9 +376,9 @@ function applySnowOverlay() {
     const colorAttr = terrainGeo.attributes.color;
 
     for (let i = 0; i < colorAttr.count; i++) {
-        const h = pos.getY(i); // current vertex height
+        const h = pos.getY(i);
         const x = pos.getX(i);
-        const z = pos.getZ(i); // note: PlaneGeometry Y is up in local coords
+        const z = pos.getZ(i);
 
         let baseColor = new THREE.Color(0x66bb66); // base green
 
@@ -431,6 +455,7 @@ function animate() {
 
     updateWater();
     updateParticles(delta);
+    updateClouds(delta);
 
     renderer.render(scene, camera);
 }
