@@ -31,7 +31,7 @@ controls.update();
 // Terrain parameters
 const terrainSize = 50;
 const segments = 60; // number of vertices along width/height
-const heightMult = 1.8;
+let heightMult = 1.8;
 const noiseScale = 0.05;
 const noise2D = createNoise2D();
 
@@ -100,7 +100,7 @@ for (let i = 0; i < pos.count; i++) {
     pos.setZ(i, h);
 }
 
-const snowLevel = .8;
+let snowLevel = .8;
 const colors = [];
 
 for (let i = 0; i < pos.count; i++) {
@@ -224,7 +224,7 @@ dir.castShadow = true;
 scene.add(dir);
 
 // Water
-const waterLevel = -0.6;
+let waterLevel = -0.6;
 const waterGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 1, 1);
 const waterMat = new THREE.MeshStandardMaterial({
     color: 0x1e90ff,
@@ -383,7 +383,8 @@ function applySnowOverlay() {
         let baseColor = new THREE.Color(0x66bb66); // base green
 
         // snow for weather
-        const snowAmount = Math.min(Math.max((h - snowLevel) / (snowLevel * 0.5), 0), 1);
+        const snowBase = .2;
+        const snowAmount = THREE.MathUtils.clamp((h - snowBase) / Math.max(0.0001, snowLevel - snowBase), 0, 1);
 
         // check extreme peaks
         let peakSnow = 0;
@@ -467,3 +468,49 @@ window.addEventListener("resize", () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+// Improved UI/UX for Interactivity
+const waterSlider = document.getElementById("waterSlider");
+const snowSlider = document.getElementById("snowSlider");
+const heightSlider = document.getElementById("heightSlider");
+
+// Water level control
+waterSlider.addEventListener("input", () => {
+    waterLevel = parseFloat(waterSlider.value);
+});
+
+// Snow level control
+snowSlider.addEventListener("input", () => {
+    snowLevel = parseFloat(snowSlider.value);
+    if (weatherType === "snow") applySnowOverlay();
+});
+
+// Terrain height control
+/*
+heightSlider.addEventListener("input", () => {
+    heightMult = parseFloat(heightSlider.value);
+
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        let h = fbmNoise(x, y) * heightMult;
+
+        extremePeaks.forEach(peak => {
+            const dx = x - peak.x;
+            const dz = y - peak.z;
+            const dist = Math.sqrt(dx*dx + dz*dz);
+            if (dist < peak.radius) {
+                const influence = 1 - dist / peak.radius;
+                h += peak.height * influence * (0.5 + 0.5 * noise2D(x*0.3, y*0.3));
+            }
+        });
+
+        h += noise2D(x*0.5, y*0.5) * 0.2;
+        pos.setZ(i, h);
+    }
+
+    terrainGeo.attributes.position.needsUpdate = true;
+    terrainGeo.computeVertexNormals();
+
+    if (weatherType === "snow") applySnowOverlay();
+});*/
