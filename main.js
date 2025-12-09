@@ -84,7 +84,7 @@ for (let i = 0; i < numExtremePeaks; i++) {
     extremePeaks.push({
         x: (Math.random() - 0.5) * terrainSize,
         z: (Math.random() - 0.5) * terrainSize,
-        height: 6 + Math.random() * 6,
+        height: 8 + Math.random() * 6,
         radius: 4 + Math.random() * 3
     });
 };
