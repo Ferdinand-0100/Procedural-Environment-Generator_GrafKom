@@ -151,67 +151,139 @@ function placeObjectOnTerrain(obj, x, z) {
     }
 }
 
-// Trees (temporary)
+// Trees
 function createTree() {
     const tree = new THREE.Group();
 
-    const trunkGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.6, 5);
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, flatShading: true });
+    // Trunk variation
+    const trunkRadiusTop = 0.08 + Math.random() * 0.05;
+    const trunkRadiusBottom = 0.08 + Math.random() * 0.05;
+    const trunkHeight = 0.5 + Math.random() * 0.5;
+    const trunkGeo = new THREE.CylinderGeometry(trunkRadiusTop, trunkRadiusBottom, trunkHeight, 5);
+    const trunkMat = new THREE.MeshStandardMaterial({ 
+        color: new THREE.Color().setHSL(0.08, 0.6, 0.35 + Math.random()*0.1), 
+        flatShading: true 
+    });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-    trunk.position.y = 0.3;
+    trunk.position.y = trunkHeight/2;
     trunk.castShadow = true;
     tree.add(trunk);
 
-    const leavesGeo = new THREE.ConeGeometry(0.5, 1.2, 6);
-    const leavesMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, flatShading: true });
-    const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-    leaves.position.y = 1.1;
-    leaves.castShadow = true;
-    tree.add(leaves);
+    // Leaves variation
+    const numLeavesCones = 1 + Math.floor(Math.random()*3);
+    for (let i=0; i<numLeavesCones; i++) {
+        const coneHeight = 0.8 + Math.random() * 0.5;
+        const coneRadius = 0.4 + Math.random() * 0.3;
+        const leavesGeo = new THREE.ConeGeometry(coneRadius, coneHeight, 6);
+        const leavesMat = new THREE.MeshStandardMaterial({ 
+            color: new THREE.Color().setHSL(0.33 + Math.random()*0.1, 0.6, 0.3 + Math.random()*0.1), 
+            flatShading: true 
+        });
+        const leaves = new THREE.Mesh(leavesGeo, leavesMat);
+        leaves.position.y = trunkHeight + coneHeight/2 - i*0.2;
+        leaves.castShadow = true;
+        tree.add(leaves);
+    }
 
-    const s = 0.8 + Math.random()*0.4;
-    tree.scale.setScalar(s);
+    const scale = 0.7 + Math.random() * 0.6;
+    tree.scale.setScalar(scale);
 
-    // random rotation
     tree.rotation.y = Math.random() * Math.PI * 2;
 
     return tree;
 }
 
-// Rocks (temporary)
+// Rocks
 function createRock() {
-    const geo = new THREE.IcosahedronGeometry(0.4, 0);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x888888, flatShading: true });
-    const rock = new THREE.Mesh(geo, mat);
+    // Choose random rock geometry
+    const geoTypes = [
+        new THREE.IcosahedronGeometry(0.3 + Math.random()*0.5, 0),
+        new THREE.BoxGeometry(0.3 + Math.random()*0.5, 0.2 + Math.random()*0.3, 0.3 + Math.random()*0.5),
+        new THREE.CylinderGeometry(0.2 + Math.random()*0.4, 0.2 + Math.random()*0.4, 0.2 + Math.random()*0.4, 6)
+    ];
+    const geo = geoTypes[Math.floor(Math.random() * geoTypes.length)];
+
+    const rock = new THREE.Mesh(
+        geo,
+        new THREE.MeshStandardMaterial({ 
+            color: new THREE.Color().setHSL(0.1 + Math.random()*0.05, 0, 0.4 + Math.random()*0.2), 
+            flatShading: true 
+        })
+    );
     rock.castShadow = true;
 
-    rock.rotation.y = Math.random() * Math.PI * 2;
-    rock.scale.setScalar(0.3 + Math.random()*0.7);
+    rock.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+    const s = 0.3 + Math.random() * 0.7;
+    rock.scale.setScalar(s);
 
     return rock;
 }
 
+// Raycast to help props distribution
+function getRaycastHeight(x, z) {
+    raycaster.set(new THREE.Vector3(x, 50, z), down);
+    const hits = raycaster.intersectObject(terrain);
+    if (hits.length > 0) {
+        return hits[0].point.y;
+    }
+    return null; // outside terrain
+}
+
 // Scatter objects
-function scatterTrees(count=40) {
-    for (let i=0; i<count; i++) {
+function scatterTrees(count = 40, minHeight = 0, maxHeight = 3) {
+    let placed = 0;
+    while (placed < count) {
         const x = (Math.random() - 0.5) * terrainSize;
         const z = (Math.random() - 0.5) * terrainSize;
+
+        const h = getRaycastHeight(x, z);
+        if (h === null || h < minHeight || h > maxHeight) continue; // retry if invalid
+
         const tree = createTree();
         placeObjectOnTerrain(tree, x, z);
         scene.add(tree);
+        placed++;
     }
 }
 
-function scatterRocks(count=25) {
-    for (let i=0; i<count; i++) {
+function scatterRocks(count = 40, minHeight = 0, maxHeight = 3) {
+    let placed = 0;
+    while (placed < count) {
         const x = (Math.random() - 0.5) * terrainSize;
         const z = (Math.random() - 0.5) * terrainSize;
+
+        const h = getRaycastHeight(x, z);
+        if (h === null || h < minHeight || h > maxHeight) continue;
+
         const rock = createRock();
         placeObjectOnTerrain(rock, x, z);
         scene.add(rock);
+        placed++;
     }
 }
 
+function scatterTreeClusters(numClusters = 3, treesPerCluster = 10, clusterRadius = 3, minHeight = 0, maxHeight = 3) {
+    for (let i = 0; i < numClusters; i++) {
+        const centerX = (Math.random() - 0.5) * terrainSize;
+        const centerZ = (Math.random() - 0.5) * terrainSize;
+
+        for (let j = 0; j < treesPerCluster; j++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * clusterRadius;
+            const x = centerX + Math.cos(angle) * radius;
+            const z = centerZ + Math.sin(angle) * radius;
+
+            const h = getRaycastHeight(x, z);
+            if (h === null || h < minHeight || h > maxHeight) continue;
+
+            const tree = createTree();
+            placeObjectOnTerrain(tree, x, z);
+            scene.add(tree);
+        }
+    }
+}
+
+scatterTreeClusters(10, 8, 2, 0, 4);
 scatterTrees();
 scatterRocks();
 
