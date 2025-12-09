@@ -4,8 +4,11 @@ import { createNoise2D } from "https://esm.run/simplex-noise@4.0.1";
 
 // Scene setup
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x101010);
-scene.fog = new THREE.Fog(0x101010, 20, 80);
+
+// scene.background = new THREE.Color(0x101010);
+
+scene.fog = new THREE.Fog(0x87ceeb, 20, 80);
+
 
 const camera = new THREE.PerspectiveCamera(
     60,
@@ -46,6 +49,15 @@ function fbmNoise(x, y) {
 
     return total;
 }
+
+// Sky
+const skyGeo = new THREE.SphereGeometry(500, 32, 32);
+const skyMat = new THREE.MeshBasicMaterial({
+    color: 0x87ceeb,
+    side: THREE.BackSide // camera is inside
+});
+const sky = new THREE.Mesh(skyGeo, skyMat);
+scene.add(sky);
 
 // Terrain geometry
 const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, segments);
@@ -246,6 +258,41 @@ const waterClock = new THREE.Clock();
 function updateWater() {
     const t = waterClock.getElapsedTime();
     water.position.y = waterLevel + Math.sin(t * 0.5) * 0.05; // subtle up-down
+}
+
+function createCloud(x, y, z, scale = 1) {
+    const cloud = new THREE.Group();
+    const numCubes = 6 + Math.floor(Math.random() * 6);
+
+    for (let i = 0; i < numCubes; i++) {
+        const geo = new THREE.BoxGeometry(1, 1, 1);
+        const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true });
+        const cube = new THREE.Mesh(geo, mat);
+
+        cube.position.set(
+            (Math.random() - 0.5) * 3,
+            (Math.random() - 0.5) * 1,
+            (Math.random() - 0.5) * 3
+        );
+
+        cube.scale.setScalar(0.5 + Math.random() * 0.7);
+        cloud.add(cube);
+    }
+
+    cloud.position.set(x, y, z);
+    cloud.scale.setScalar(scale);
+    scene.add(cloud);
+}
+
+
+const numClouds = 8 + Math.floor(Math.random() * 6);
+
+for (let i = 0; i < numClouds; i++) {
+    const x = (Math.random() - 0.5) * terrainSize;
+    const y = 10 + Math.random() * 10;
+    const z = (Math.random() - 0.5) * terrainSize * .8;
+    const scale = 1 + Math.random() * 2;
+    createCloud(x, y, z, scale);
 }
 
 // Camera
