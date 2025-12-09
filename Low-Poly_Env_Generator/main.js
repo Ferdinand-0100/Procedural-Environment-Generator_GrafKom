@@ -93,7 +93,9 @@ for (let i = 0; i < pos.count; i++) {
     });
 
     // small secondary bumps
-    h += noise2D(x*0.5, y*0.5) * 0.2;
+    /*let baseHeight = fbmNoise(x, y) * heightMult;
+    const bump = noise2D(x*0.5, y*0.5) * 0.2 * Math.max(0, baseHeight + 0.5);
+    h = baseHeight + bump;*/
 
     pos.setZ(i, h);
 }
@@ -131,10 +133,6 @@ const terrain = new THREE.Mesh(terrainGeo, terrainMat);
 terrain.receiveShadow = true;
 scene.add(terrain);
 
-function getHeightAt(x, z) {
-    return fbmNoise(x, z) * heightMult + noise2D(x*0.5, z*0.5)*0.2;
-}
-
 const raycaster = new THREE.Raycaster();
 const down = new THREE.Vector3(0, -1, 0);
 
@@ -151,15 +149,6 @@ function placeObjectOnTerrain(obj, x, z) {
 
         obj.rotation.y = Math.random() * Math.PI * 2;
     }
-}
-
-// Deviations (extreme mountains)
-function addExtremeMountains(x, y) {
-    const chance = 0.002 + 0.02 * Math.max(0, noise2D(x*0.1, y*0.1));
-    if (Math.random() < chance) {
-        return 3 + Math.random() * 2;
-    }
-    return 0;
 }
 
 // Trees (temporary)
@@ -307,9 +296,9 @@ function createParticles(type) {
         particles.material.dispose();
     }
 
-    let count = 700;
-    if (type === "rain") count = Math.floor(500 * 1.5);
-    if (type === "snow") count = 500;
+    let count = 850;
+    if (type === "rain") count = Math.floor(850 * 1.5);
+    if (type === "snow") count = 850;
 
     particleGeometry = new THREE.BufferGeometry();
     const positions = [];
