@@ -51,24 +51,64 @@ function fbmNoise(x, y) {
 const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, segments);
 const pos = terrainGeo.attributes.position;
 
+const numExtremePeaks = 3;
+
+const extremePeaks = [];
+for (let i = 0; i < numExtremePeaks; i++) {
+    extremePeaks.push({
+        x: (Math.random() - 0.5) * terrainSize,
+        z: (Math.random() - 0.5) * terrainSize,
+        height: 6 + Math.random() * 6,
+        radius: 4 + Math.random() * 3
+    });
+};
+
+
 for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
-    const h = fbmNoise(x, y) * heightMult;
+    let h = fbmNoise(x, y) * heightMult;
 
-    // add small secondary noise for subtle bumps
-    pos.setZ(i, h + noise2D(x*0.5, y*0.5)*0.2);
+    // Apply extreme mountains
+    extremePeaks.forEach(peak => {
+        const dx = x - peak.x;
+        const dz = y - peak.z;
+        const dist = Math.sqrt(dx*dx + dz*dz);
+        if (dist < peak.radius) {
+            const influence = 1 - dist / peak.radius;
+            h += peak.height * influence * (0.5 + 0.5 * noise2D(x*0.3, y*0.3));
+        }
+    });
+
+    // small secondary bumps
+    h += noise2D(x*0.5, y*0.5) * 0.2;
+
+    pos.setZ(i, h);
 }
 
+const snowLevel = 4.5;
 const colors = [];
+
 for (let i = 0; i < pos.count; i++) {
     const z = pos.getZ(i);
     const c = new THREE.Color();
-    if (z > 0.5) c.set(0x88cc88);
-    else if (z < -0.5) c.set(0x446644);
-    else c.set(0x66bb66);
+
+    if (z > snowLevel) {
+        c.set(0xffffff); // snow
+    } else if (z > snowLevel - 1) {
+        const t = (z - (snowLevel - 1)) / 1;
+        c.lerpColors(new THREE.Color(0x88cc88), new THREE.Color(0xffffff), t);
+    } else if (z > 0.5) {
+        c.set(0x88cc88); // high grass
+    } else if (z < -0.5) {
+        c.set(0x446644); // shadowed grass
+    } else {
+        c.set(0x66bb66); // normal grass
+    }
+
     colors.push(c.r, c.g, c.b);
 }
+
 terrainGeo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
 
 terrainGeo.computeVertexNormals();
@@ -104,6 +144,15 @@ function placeObjectOnTerrain(obj, x, z) {
 
         obj.rotation.y = Math.random() * Math.PI * 2;
     }
+}
+
+// Deviations (extreme mountains)
+function addExtremeMountains(x, y) {
+    const chance = 0.002 + 0.02 * Math.max(0, noise2D(x*0.1, y*0.1));
+    if (Math.random() < chance) {
+        return 3 + Math.random() * 2;
+    }
+    return 0;
 }
 
 // Trees (temporary)
