@@ -4,8 +4,24 @@
     <meta charset="UTF-8">
     <title>Low Poly Generator</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+      #weatherSelect {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        padding: 5px 10px;
+        font-size: 16px;
+        z-index: 10;
+      }
+    </style>
   </head>
   <body>
+    <select id="weatherSelect">
+      <option value="none">Clear</option>
+      <option value="rain">Rain</option>
+      <option value="snow">Snow</option>
+    </select>
+
     <script type="module" src="./main.js"></script>
   </body>
 </html>

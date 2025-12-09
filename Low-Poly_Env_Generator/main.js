@@ -295,14 +295,96 @@ for (let i = 0; i < numClouds; i++) {
     createCloud(x, y, z, scale);
 }
 
+// Particle System for Rain and Snow
+
+let particles;
+let particleMaterial;
+let particleGeometry;
+let weatherType = "none"; // "rain", "snow", "none"
+
+function createParticles(type) {
+    if (particles) {
+        scene.remove(particles);
+        particles.geometry.dispose();
+        particles.material.dispose();
+    }
+
+    const count = 500;
+    particleGeometry = new THREE.BufferGeometry();
+    const positions = [];
+
+    for (let i = 0; i < count; i++) {
+        const x = (Math.random() - 0.5) * terrainSize * 2;
+        const y = Math.random() * 20 + 5;
+        const z = (Math.random() - 0.5) * terrainSize * 2;
+        positions.push(x, y, z);
+    }
+
+    particleGeometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+
+    particleMaterial = new THREE.PointsMaterial({
+        color: type === "snow" ? 0xffffff : 0x88ccff,
+        size: type === "snow" ? 0.2 : 0.1
+    });
+
+    particles = new THREE.Points(particleGeometry, particleMaterial);
+    scene.add(particles);
+}
+
+function updateParticles(delta) {
+    if (!particles || weatherType === "none") return;
+
+    const positions = particles.geometry.attributes.position.array;
+    for (let i = 0; i < positions.length; i += 3) {
+        if (weatherType === "rain") {
+            positions[i + 1] -= 20 * delta;
+        } else if (weatherType === "snow") {
+            positions[i + 1] -= 5 * delta;
+            positions[i] += Math.sin(Date.now() * 0.001 + i) * 0.01;
+        }
+
+        // Reset particle when below terrain
+        if (positions[i + 1] < 0) {
+            positions[i + 1] = 20 + Math.random() * 5;
+            positions[i] = (Math.random() - 0.5) * terrainSize * 2;
+            positions[i + 2] = (Math.random() - 0.5) * terrainSize * 2;
+        }
+    }
+
+    particles.geometry.attributes.position.needsUpdate = true;
+}
+
+function setWeather(type) {
+    weatherType = type;
+    if (type === "none") {
+        if (particles) scene.remove(particles);
+    } else {
+        createParticles(type);
+    }
+}
+
+const weatherSelect = document.getElementById("weatherSelect");
+weatherSelect.addEventListener("change", (e) => {
+    setWeather(e.target.value);
+});
+
+setWeather(weatherSelect.value);
+
 // Camera
 camera.position.set(6, 5, 6);
 camera.lookAt(0, 0, 0);
 
 // Animation
+const clock = new THREE.Clock();
+
 function animate() {
     requestAnimationFrame(animate);
+
+    const delta = clock.getDelta();
+
     updateWater();
+    updateParticles(delta);
+
     renderer.render(scene, camera);
 }
 animate();
