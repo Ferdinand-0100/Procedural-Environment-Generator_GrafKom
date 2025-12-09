@@ -17,12 +17,12 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
-const terrainSize = 20;
-const segments = 100;
+const terrainSize = 50;
+const segments = 60;
 
 const noise2D = createNoise2D();
-const scale = 0.15;
-const heightMult = 2.5;
+const scale = 0.05;
+const heightMult = 1.3;
 
 const terrainGeo = new THREE.PlaneGeometry(
     terrainSize,
@@ -35,6 +35,21 @@ const pos = terrainGeo.attributes.position;
 
 const raycaster = new THREE.Raycaster();
 const down = new THREE.Vector3(0, -1, 0);
+
+function fbmNoise(x, y) {
+    let total = 0;
+    let amplitude = 1;
+    let frequency = 0.08;
+
+    for (let i = 0; i < 4; i++) {
+        total += noise2D(x * frequency, y * frequency) * amplitude;
+
+        amplitude *= 0.5;
+        frequency *= 2;
+    }
+
+    return total;
+}
 
 function placeObjectOnTerrain(obj, x, z) {
     // start high above terrain
@@ -51,7 +66,7 @@ function placeObjectOnTerrain(obj, x, z) {
 for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
-    const h = noise2D(x * scale, y * scale) * heightMult;
+    const h = fbmNoise(x, y) * heightMult;
     pos.setZ(i, h);
 }
 
