@@ -98,19 +98,14 @@ for (let i = 0; i < pos.count; i++) {
     pos.setZ(i, h);
 }
 
-const snowLevel = 4.5;
+const snowLevel = .8;
 const colors = [];
 
 for (let i = 0; i < pos.count; i++) {
-    const z = pos.getZ(i);
+    const z = pos.getZ(i); // height
     const c = new THREE.Color();
 
-    if (z > snowLevel) {
-        c.set(0xffffff); // snow
-    } else if (z > snowLevel - 1) {
-        const t = (z - (snowLevel - 1)) / 1;
-        c.lerpColors(new THREE.Color(0x88cc88), new THREE.Color(0xffffff), t);
-    } else if (z > 0.5) {
+    if (z > 0.5) {
         c.set(0x88cc88); // high grass
     } else if (z < -0.5) {
         c.set(0x446644); // shadowed grass
@@ -302,6 +297,9 @@ let particleMaterial;
 let particleGeometry;
 let weatherType = "none"; // "rain", "snow", "none"
 
+// Original terrain colors
+const originalColors = terrainGeo.attributes.color.array.slice();
+
 function createParticles(type) {
     if (particles) {
         scene.remove(particles);
@@ -309,7 +307,10 @@ function createParticles(type) {
         particles.material.dispose();
     }
 
-    const count = 500;
+    let count = 700;
+    if (type === "rain") count = Math.floor(500 * 1.5);
+    if (type === "snow") count = 500;
+
     particleGeometry = new THREE.BufferGeometry();
     const positions = [];
 
@@ -343,7 +344,6 @@ function updateParticles(delta) {
             positions[i] += Math.sin(Date.now() * 0.001 + i) * 0.01;
         }
 
-        // Reset particle when below terrain
         if (positions[i + 1] < 0) {
             positions[i + 1] = 20 + Math.random() * 5;
             positions[i] = (Math.random() - 0.5) * terrainSize * 2;
@@ -353,13 +353,71 @@ function updateParticles(delta) {
 
     particles.geometry.attributes.position.needsUpdate = true;
 }
+function updateSkyColor(color) {
+    sky.material.color.set(color);
+    sky.material.needsUpdate = true;
+    scene.fog.color.set(color);
+}
+
+function applySnowOverlay() {
+    const colorAttr = terrainGeo.attributes.color;
+
+    for (let i = 0; i < colorAttr.count; i++) {
+        const h = pos.getY(i); // current vertex height
+        const x = pos.getX(i);
+        const z = pos.getZ(i); // note: PlaneGeometry Y is up in local coords
+
+        let baseColor = new THREE.Color(0x66bb66); // base green
+
+        // snow for weather
+        const snowAmount = Math.min(Math.max((h - snowLevel) / (snowLevel * 0.5), 0), 1);
+
+        // check extreme peaks
+        let peakSnow = 0;
+        extremePeaks.forEach(peak => {
+            const dx = x - peak.x;
+            const dz = z - peak.z;
+            const dist = Math.sqrt(dx*dx + dz*dz);
+            if (dist < peak.radius) {
+                const influence = 1 - dist / peak.radius;
+                peakSnow = Math.max(peakSnow, influence); // stronger influence overrides
+            }
+        });
+
+        // combine weather snow and peak snow
+        const finalSnow = Math.max(snowAmount, peakSnow);
+
+        baseColor.lerp(new THREE.Color(0xffffff), finalSnow);
+
+        colorAttr.setXYZ(i, baseColor.r, baseColor.g, baseColor.b);
+    }
+
+    colorAttr.needsUpdate = true;
+}
 
 function setWeather(type) {
     weatherType = type;
+
+    if (particles) {
+        scene.remove(particles);
+        particles.geometry.dispose();
+        particles.material.dispose();
+        particles = null;
+    }
+
     if (type === "none") {
-        if (particles) scene.remove(particles);
-    } else {
-        createParticles(type);
+        updateSkyColor(0x87ceeb);
+        terrainGeo.attributes.color.array.set(originalColors);
+        terrainGeo.attributes.color.needsUpdate = true;
+    } else if (type === "rain") {
+        createParticles("rain");
+        updateSkyColor(0x555577);
+        terrainGeo.attributes.color.array.set(originalColors);
+        terrainGeo.attributes.color.needsUpdate = true;
+    } else if (type === "snow") {
+        createParticles("snow");
+        updateSkyColor(0xbbccdd);
+        applySnowOverlay();
     }
 }
 
