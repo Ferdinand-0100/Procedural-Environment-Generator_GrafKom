@@ -33,6 +33,21 @@ const terrainGeo = new THREE.PlaneGeometry(
 
 const pos = terrainGeo.attributes.position;
 
+const raycaster = new THREE.Raycaster();
+const down = new THREE.Vector3(0, -1, 0);
+
+function placeObjectOnTerrain(obj, x, z) {
+    // start high above terrain
+    raycaster.set(new THREE.Vector3(x, 50, z), down);
+
+    const hits = raycaster.intersectObject(terrain);
+
+    if (hits.length > 0) {
+        const p = hits[0].point;
+        obj.position.copy(p);
+    }
+}
+
 for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
@@ -101,10 +116,11 @@ function scatterTrees(count = 40) {
     for (let i = 0; i < count; i++) {
         const x = (Math.random() - 0.5) * terrainSize;
         const z = (Math.random() - 0.5) * terrainSize;
-        const h = getHeightAt(x, z);
 
         const tree = createTree();
-        tree.position.set(x, h, z);
+        
+        placeObjectOnTerrain(tree, x, z);
+
         tree.rotation.y = Math.random() * Math.PI * 2;
 
         scene.add(tree);
@@ -115,10 +131,10 @@ function scatterRocks(count = 25) {
     for (let i = 0; i < count; i++) {
         const x = (Math.random() - 0.5) * terrainSize;
         const z = (Math.random() - 0.5) * terrainSize;
-        const h = getHeightAt(x, z);
 
         const rock = createRock();
-        rock.position.set(x, h, z);
+
+        placeObjectOnTerrain(rock, x, z);
 
         scene.add(rock);
     }
