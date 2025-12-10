@@ -480,6 +480,26 @@ function initScene() {
 
     let snowLevel = 0.8;
 
+    // Audio
+    let audio = new Audio();
+    audio.loop = true;
+    audio.volume = 0.4;
+
+    function setWeatherSound(type) {
+        if (type === "rain") {
+            audio.src = "assets/rain.mp3";
+            audio.volume = 0.2;
+            audio.play();
+        } else if (type === "snow") {
+            audio.src = "assets/snow.mp3";
+            audio.volume = 1.0;
+            audio.play();
+        } else {
+            audio.pause();
+            audio.currentTime = 0;
+        }
+    }
+
     function applySnowOverlay() {
         const colorAttr = terrainGeo.attributes.color;
         for (let i = 0; i < colorAttr.count; i++) {
@@ -532,6 +552,7 @@ function initScene() {
             scene.fog.color.set(0xbbccdd);
             applySnowOverlay();
         }
+        setWeatherSound(type);
     }
 
     const weatherSelect = document.getElementById('weatherSelect');
