@@ -2,7 +2,7 @@ import * as THREE from "https://esm.run/three@0.160.0";
 import { OrbitControls } from "https://esm.run/three@0.160.0/examples/jsm/controls/OrbitControls.js";
 import { createNoise2D } from "https://esm.run/simplex-noise@4.0.1";
 
-// ===== LOCALSTORAGE FUNCTIONS =====
+// Local Storage
 function loadSettings() {
     const generated = localStorage.getItem('terrainGenerated');
     return {
@@ -31,7 +31,7 @@ function showLoading(show = true) {
 // Load settings
 const settings = loadSettings();
 
-// ===== UI SETUP =====
+// UI
 const generationPanel = document.getElementById('generationPanel');
 const controlPanel = document.getElementById('controlPanel');
 const hint = document.getElementById('hint');
@@ -61,7 +61,7 @@ treeDensityInput.addEventListener('input', () => {
     treeDensityValue.textContent = treeDensityInput.value;
 });
 
-// Show appropriate panel
+// Settings Panel
 if (settings.generated) {
     generationPanel.style.display = 'none';
     controlPanel.style.display = 'block';
@@ -103,7 +103,7 @@ regenerateButton.addEventListener('click', () => {
     setTimeout(() => location.reload(), 100);
 });
 
-// ===== SCENE INITIALIZATION =====
+// Scene Initialization
 function initScene() {
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x87ceeb, 20, 80);
@@ -123,14 +123,14 @@ function initScene() {
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
-    // ===== PARAMETERS =====
+    // Parameters
     const terrainSize = 50;
     const segments = settings.segments;
     const heightMult = settings.heightMult;
     const treeDensity = settings.treeDensity;
     const noise2D = createNoise2D();
 
-    // ===== NOISE FUNCTION =====
+    // Noise
     function fbmNoise(x, y) {
         let total = 0;
         let amplitude = 1;
@@ -145,13 +145,13 @@ function initScene() {
         return total;
     }
 
-    // ===== SKY =====
+    // Sky
     const skyGeo = new THREE.SphereGeometry(500, 32, 32);
     const skyMat = new THREE.MeshBasicMaterial({ color: 0x87ceeb, side: THREE.BackSide });
     const sky = new THREE.Mesh(skyGeo, skyMat);
     scene.add(sky);
 
-    // ===== TERRAIN GENERATION =====
+    // Terrain
     const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, segments);
     const pos = terrainGeo.attributes.position;
 
@@ -187,14 +187,14 @@ function initScene() {
         pos.setZ(i, h);
     }
 
-    // ===== BIOME COLORING (Beach, Grass, Snow) =====
+    // Biome
     const colors = [];
     for (let i = 0; i < pos.count; i++) {
         const z = pos.getZ(i);
         const c = new THREE.Color();
 
         if (z < -0.3) {
-            // Beach/Sand biome (low elevation)
+            // Beach biome
             c.set(0xf4e4c1);
         } else if (z < 0.5) {
             // Low grass
@@ -203,7 +203,7 @@ function initScene() {
             // High grass
             c.set(0x88cc88);
         } else {
-            // Snow biome (high elevation)
+            // Snow biome
             c.set(0xffffff);
         }
 
@@ -224,7 +224,7 @@ function initScene() {
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // ===== RAYCASTING FOR OBJECT PLACEMENT =====
+    // Raycast for Props Placement
     const raycaster = new THREE.Raycaster();
     const down = new THREE.Vector3(0, -1, 0);
 
@@ -245,7 +245,7 @@ function initScene() {
         return hits.length > 0 ? hits[0].point.y : null;
     }
 
-    // ===== TREE CREATION =====
+    // Trees
     function createTree() {
         const tree = new THREE.Group();
 
@@ -279,7 +279,7 @@ function initScene() {
         return tree;
     }
 
-    // ===== ROCK CREATION =====
+    // Rocks
     function createRock() {
         const geoTypes = [
             new THREE.IcosahedronGeometry(0.3 + Math.random()*0.4, 0),
@@ -296,7 +296,7 @@ function initScene() {
         return rock;
     }
 
-    // ===== SCATTER OBJECTS =====
+    // Object Scattering
     function scatterTrees(count, minH, maxH) {
         let placed = 0;
         let attempts = 0;
@@ -335,18 +335,17 @@ function initScene() {
         }
     }
 
-    // Place objects based on density parameter
     scatterTrees(treeDensity, -0.2, 2.5);
     scatterRocks(Math.floor(treeDensity * 0.5), 0, 4);
 
-    // ===== LIGHTING =====
+    // Lighting
     scene.add(new THREE.AmbientLight(0xffffff, 0.4));
     const dir = new THREE.DirectionalLight(0xffffff, 1.0);
     dir.position.set(5, 10, 7);
     dir.castShadow = true;
     scene.add(dir);
 
-    // ===== WATER =====
+    // Water
     let waterLevel = -0.6;
     const waterGeo = new THREE.PlaneGeometry(terrainSize, terrainSize);
     const waterMat = new THREE.MeshStandardMaterial({
@@ -366,7 +365,7 @@ function initScene() {
         water.position.y = waterLevel + Math.sin(t * 0.5) * 0.05;
     }
 
-    // ===== CLOUDS =====
+    // Clouds
     const clouds = [];
     const maxClouds = 10;
 
@@ -424,7 +423,7 @@ function initScene() {
         );
     }
 
-    // ===== WEATHER SYSTEM =====
+    // Weather System
     let particles;
     let weatherType = 'none';
     const originalColors = terrainGeo.attributes.color.array.slice();
@@ -535,7 +534,6 @@ function initScene() {
         }
     }
 
-    // ===== UI CONTROLS =====
     const weatherSelect = document.getElementById('weatherSelect');
     weatherSelect.addEventListener('change', (e) => setWeather(e.target.value));
 
@@ -550,7 +548,6 @@ function initScene() {
         if (weatherType === 'snow') applySnowOverlay();
     });
 
-    // ===== ANIMATION LOOP =====
     const clock = new THREE.Clock();
 
     function animate() {
@@ -567,7 +564,6 @@ function initScene() {
 
     animate();
 
-    // ===== RESIZE =====
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();

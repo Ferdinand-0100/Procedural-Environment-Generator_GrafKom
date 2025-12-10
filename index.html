@@ -22,13 +22,12 @@
             height: 100vh;
         }
 
-        /* Generation Panel (before generation) */
         #generationPanel {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0e1b58 0%, #282643 100%);
             padding: 30px;
             border-radius: 15px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.5);
@@ -119,7 +118,6 @@
             background: #da190b;
         }
 
-        /* Control Panel (after generation) */
         #controlPanel {
             position: fixed;
             top: 20px;
@@ -177,7 +175,6 @@
             background: #0b7dda;
         }
 
-        /* Loading Overlay */
         #loadingOverlay {
             position: fixed;
             top: 0;
@@ -246,17 +243,17 @@
         </div>
     </div>
 
-    <!-- Generation Panel (shown before first generation) -->
+    <!-- Generation Panel -->
     <div id="generationPanel">
-        <h2>🏔️ Environment Generator</h2>
+        <h2>Environment Generator</h2>
         
         <div class="param-group">
             <label>Level of Detail (LOD):</label>
             <select id="lodInput">
-                <option value="32">Low (32×32) - Fast</option>
-                <option value="60" selected>Medium (60×60) - Balanced</option>
-                <option value="96">High (96×96) - Detailed</option>
-                <option value="128">Very High (128×128) - Maximum</option>
+                <option value="32">Low (32x32) - Fast</option>
+                <option value="60" selected>Medium (60x60) - Balanced</option>
+                <option value="96">High (96x96) - Detailed</option>
+                <option value="128">Very High (128x128) - Maximum</option>
             </select>
             <div class="info-badge">Higher LOD = More polygons & detail</div>
         </div>
@@ -275,20 +272,20 @@
             <div class="info-badge">Number of trees to generate</div>
         </div>
 
-        <button id="generateButton">🎨 Generate Environment</button>
-        <button id="resetButton">🔄 Reset to Defaults</button>
+        <button id="generateButton">Generate Environment</button>
+        <button id="resetButton">Reset to Defaults</button>
     </div>
 
-    <!-- Control Panel (shown after generation) -->
+    <!-- Control Panel -->
     <div id="controlPanel">
-        <h3>🎮 Environment Controls</h3>
+        <h3>Environment Controls</h3>
         
         <div class="control-row">
             <label>Weather:</label>
             <select id="weatherSelect">
-                <option value="none">Clear ☀️</option>
-                <option value="rain">Rain 🌧️</option>
-                <option value="snow">Snow ❄️</option>
+                <option value="none">Clear</option>
+                <option value="rain">Rain</option>
+                <option value="snow">Snow</option>
             </select>
         </div>
 
