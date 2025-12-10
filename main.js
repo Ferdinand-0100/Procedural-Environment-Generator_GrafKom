@@ -479,21 +479,39 @@ function initScene() {
     }
 
     let snowLevel = 0.8;
-
+    
     // Audio
     let audio = new Audio();
     audio.loop = true;
     audio.volume = 0.4;
-
+    let audioEnabled = false;
+    
+    // Enable audio on first user interaction
+    function enableAudio() {
+        if (!audioEnabled) {
+            audioEnabled = true;
+            console.log("Audio enabled");
+        }
+    }
+    
     function setWeatherSound(type) {
+        if (!audioEnabled) {
+            console.log("Audio not enabled yet. User must interact first.");
+            return;
+        }
+    
         if (type === "rain") {
             audio.src = "assets/rain.mp3";
             audio.volume = 0.2;
-            audio.play();
+            audio.play().catch(err => {
+                console.log("Audio play error:", err);
+            });
         } else if (type === "snow") {
             audio.src = "assets/snow.mp3";
             audio.volume = 1.0;
-            audio.play();
+            audio.play().catch(err => {
+                console.log("Audio play error:", err);
+            });
         } else {
             audio.pause();
             audio.currentTime = 0;
@@ -556,7 +574,10 @@ function initScene() {
     }
 
     const weatherSelect = document.getElementById('weatherSelect');
-    weatherSelect.addEventListener('change', (e) => setWeather(e.target.value));
+    weatherSelect.addEventListener('change', (e) => {
+        enableAudio(); // Enable audio on first interaction
+        setWeather(e.target.value);
+    });
 
     const waterSlider = document.getElementById('waterSlider');
     waterSlider.addEventListener('input', () => {
