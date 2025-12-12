@@ -270,7 +270,7 @@ function initScene() {
                 flatShading: true 
             });
             const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-            leaves.position.y = trunkHeight + coneHeight/2 - i*0.2;
+            leaves.position.y = trunkHeight + (coneHeight/2) - (i*0.2);
             leaves.castShadow = true;
             tree.add(leaves);
         }
@@ -362,7 +362,7 @@ function initScene() {
     const waterClock = new THREE.Clock();
     function updateWater() {
         const t = waterClock.getElapsedTime();
-        water.position.y = waterLevel + Math.sin(t * 0.5) * 0.05;
+        water.position.y = waterLevel + (Math.sin(t * 0.5) * 0.05);
     }
 
     // Clouds
