@@ -4,28 +4,26 @@ import { createNoise2D } from "https://esm.run/simplex-noise@4.0.1";
 
 // Manual 3D Builds
 function createRockGeometry() {
-    const vertices = [];
-    const indices = [];
+    const vertices = [
+         0,  1,  0,
+        -1, -1,  1,
+         1, -1,  1,
+         0, -1, -1
+    ];
 
-    const pointCount = 8 + Math.floor(Math.random() * 6);
-
-    for (let i = 0; i < pointCount; i++) {
-        vertices.push(
-            (Math.random() - 0.5) * 1.2,
-            (Math.random() - 0.5) * 0.8,
-            (Math.random() - 0.5) * 1.2
-        );
+    for (let i = 0; i < vertices.length; i++) {
+        vertices[i] += (Math.random() - 0.5) * 0.4;
     }
 
-    for (let i = 1; i < pointCount - 1; i++) {
-        indices.push(0, i, i + 1);
-    }
+    const indices = [
+        0, 1, 2,
+        0, 2, 3,
+        0, 3, 1,
+        1, 3, 2
+    ];
 
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute(
-        'position',
-        new THREE.Float32BufferAttribute(vertices, 3)
-    );
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geo.setIndex(indices);
     geo.computeVertexNormals();
 
