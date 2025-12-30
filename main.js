@@ -430,14 +430,11 @@ function initScene() {
     scatterRocks(Math.floor(treeDensity * 0.5), 0, 4);
 
     // Lighting 
-
-    /*
     scene.add(new THREE.AmbientLight(0xffffff, 0.4));
     const dir = new THREE.DirectionalLight(0xffffff, 1.0);
     dir.position.set(5, 10, 7);
     dir.castShadow = true;
     scene.add(dir);
-    */
 
     // Water
     let waterLevel = -0.6;
