@@ -2,6 +2,72 @@ import * as THREE from "https://esm.run/three@0.160.0";
 import { OrbitControls } from "https://esm.run/three@0.160.0/examples/jsm/controls/OrbitControls.js";
 import { createNoise2D } from "https://esm.run/simplex-noise@4.0.1";
 
+// Manual 3D Builds
+function createRockGeometry() {
+    const vertices = [];
+    const indices = [];
+
+    const pointCount = 8 + Math.floor(Math.random() * 6);
+
+    for (let i = 0; i < pointCount; i++) {
+        vertices.push(
+            (Math.random() - 0.5) * 1.2,
+            (Math.random() - 0.5) * 0.8,
+            (Math.random() - 0.5) * 1.2
+        );
+    }
+
+    for (let i = 1; i < pointCount - 1; i++) {
+        indices.push(0, i, i + 1);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(vertices, 3)
+    );
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+
+    return geo;
+}
+
+function createCylinderGeometry(radiusTop, radiusBottom, height, segments = 6) {
+    const vertices = [];
+    const indices = [];
+    const half = height / 2;
+
+    for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+
+        vertices.push(
+            cos * radiusBottom, -half, sin * radiusBottom,
+            cos * radiusTop,     half, sin * radiusTop
+        );
+    }
+
+    for (let i = 0; i < segments; i++) {
+        const a = i * 2;
+        indices.push(
+            a, a + 1, a + 3,
+            a, a + 3, a + 2
+        );
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+
+    return geo;
+}
+
+function createConeGeometry(radius, height, segments = 6) {
+    return createCylinderGeometry(0, radius, height, segments);
+}
+
 // Local Storage
 function loadSettings() {
     const generated = localStorage.getItem('terrainGenerated');
@@ -250,27 +316,44 @@ function initScene() {
         const tree = new THREE.Group();
 
         const trunkHeight = 0.5 + Math.random() * 0.5;
-        const trunkGeo = new THREE.CylinderGeometry(0.08, 0.1, trunkHeight, 5);
-        const trunkMat = new THREE.MeshStandardMaterial({ 
-            color: new THREE.Color().setHSL(0.08, 0.6, 0.35), 
-            flatShading: true 
+        const trunkGeo = createCylinderGeometry(
+            0.08,
+            0.1,
+            trunkHeight,
+            5
+        );
+
+        const trunkMat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color().setHSL(0.08, 0.6, 0.35),
+            flatShading: true
         });
+
         const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-        trunk.position.y = trunkHeight/2;
+        trunk.position.y = trunkHeight / 2;
         trunk.castShadow = true;
         tree.add(trunk);
 
-        const numCones = 1 + Math.floor(Math.random()*2);
-        for (let i=0; i<numCones; i++) {
+        const numCones = 1 + Math.floor(Math.random() * 2);
+
+        for (let i = 0; i < numCones; i++) {
             const coneHeight = 0.8 + Math.random() * 0.4;
             const coneRadius = 0.4 + Math.random() * 0.2;
-            const leavesGeo = new THREE.ConeGeometry(coneRadius, coneHeight, 6);
-            const leavesMat = new THREE.MeshStandardMaterial({ 
-                color: new THREE.Color().setHSL(0.33, 0.6, 0.35), 
-                flatShading: true 
+
+            const leavesGeo = createConeGeometry(
+                coneRadius,
+                coneHeight,
+                6
+            );
+
+            const leavesMat = new THREE.MeshStandardMaterial({
+                color: new THREE.Color().setHSL(0.33, 0.6, 0.35),
+                flatShading: true
             });
+
             const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-            leaves.position.y = trunkHeight + (coneHeight/2) - (i*0.2);
+            leaves.position.y =
+                trunkHeight + (coneHeight / 2) - (i * 0.2);
+
             leaves.castShadow = true;
             tree.add(leaves);
         }
@@ -281,18 +364,26 @@ function initScene() {
 
     // Rocks
     function createRock() {
-        const geoTypes = [
-            new THREE.IcosahedronGeometry(0.3 + Math.random()*0.4, 0),
-            new THREE.BoxGeometry(0.4, 0.3, 0.4)
-        ];
-        const geo = geoTypes[Math.floor(Math.random() * geoTypes.length)];
-        const rock = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ 
-            color: new THREE.Color().setHSL(0, 0, 0.4 + Math.random()*0.2), 
-            flatShading: true 
-        }));
+        const geo = createRockGeometry();
+
+        const rock = new THREE.Mesh(
+            geo,
+            new THREE.MeshStandardMaterial({
+                color: new THREE.Color().setHSL(
+                    0, 0, 0.4 + Math.random() * 0.2
+                ),
+                flatShading: true
+            })
+        );
+
         rock.castShadow = true;
-        rock.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+        rock.rotation.set(
+            Math.random() * Math.PI,
+            Math.random() * Math.PI,
+            Math.random() * Math.PI
+        );
         rock.scale.setScalar(0.4 + Math.random() * 0.6);
+
         return rock;
     }
 
@@ -338,12 +429,15 @@ function initScene() {
     scatterTrees(treeDensity, -0.2, 2.5);
     scatterRocks(Math.floor(treeDensity * 0.5), 0, 4);
 
-    // Lighting
+    // Lighting 
+
+    /*
     scene.add(new THREE.AmbientLight(0xffffff, 0.4));
     const dir = new THREE.DirectionalLight(0xffffff, 1.0);
     dir.position.set(5, 10, 7);
     dir.castShadow = true;
     scene.add(dir);
+    */
 
     // Water
     let waterLevel = -0.6;
