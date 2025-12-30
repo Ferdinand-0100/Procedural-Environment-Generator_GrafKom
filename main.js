@@ -380,7 +380,7 @@ function initScene() {
             Math.random() * Math.PI,
             Math.random() * Math.PI
         );
-        rock.scale.setScalar(0.4 + Math.random() * 0.6);
+        rock.scale.setScalar(0.15 + Math.random() * 0.6);
 
         return rock;
     }
