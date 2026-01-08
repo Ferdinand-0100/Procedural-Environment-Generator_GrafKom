@@ -66,6 +66,28 @@ function createConeGeometry(radius, height, segments = 6) {
     return createCylinderGeometry(0, radius, height, segments);
 }
 
+// Outline (Untuk garis)
+function addOutline(mesh, {
+    color = 0x000000,
+    scale = 1.05
+} = {}) {
+    const outlineMat = new THREE.MeshBasicMaterial({
+        color,
+        side: THREE.BackSide
+    });
+
+    const outline = new THREE.Mesh(mesh.geometry, outlineMat);
+    outline.scale.multiplyScalar(scale);
+
+    // Match transforms
+    outline.position.copy(mesh.position);
+    outline.rotation.copy(mesh.rotation);
+
+    outline.renderOrder = mesh.renderOrder - 1;
+
+    mesh.add(outline);
+}
+
 // Local Storage
 function loadSettings() {
     const generated = localStorage.getItem('terrainGenerated');
@@ -381,6 +403,10 @@ function initScene() {
             Math.random() * Math.PI
         );
         rock.scale.setScalar(0.15 + Math.random() * 0.6);
+
+        addOutline(rock, { //Line tadi
+            scale: 1.08
+        });
 
         return rock;
     }
