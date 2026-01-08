@@ -335,10 +335,50 @@ function initScene() {
     terrainGeo.computeVertexNormals();
     terrainGeo.rotateX(-Math.PI / 2);
 
-    const terrainMat = new THREE.MeshStandardMaterial({
-        vertexColors: true,
-        flatShading: true,
-        roughness: 1.0
+    const terrainMat = new THREE.ShaderMaterial({ // Custom Shader 1
+        uniforms: {
+            uAmbientLight: { value: 0.4 },
+            uLightColor: { value: new THREE.Color(0xffffff) },
+            uLightPosition: { value: new THREE.Vector3(5, 10, 7) }
+        },
+        vertexShader: `
+            attribute vec3 color;
+            varying vec3 vColor;
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+            
+            void main() {
+                vColor = color;
+                vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                
+                vNormal = normalize(normalMatrix * normal);
+                
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float uAmbientLight;
+            uniform vec3 uLightColor;
+            uniform vec3 uLightPosition;
+            
+            varying vec3 vColor;
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+            
+            void main() {
+                vec3 flatNormal = normalize(cross(dFdx(vPosition), dFdy(vPosition)));
+                
+                vec3 lightDir = normalize(uLightPosition - vPosition);
+                float diffuse = max(dot(flatNormal, lightDir), 0.0);
+                
+                vec3 lighting = uLightColor * (uAmbientLight + diffuse * 0.8);
+                
+                vec3 finalColor = vColor * lighting;
+                
+                gl_FragColor = vec4(finalColor, 1.0);
+            }
+        `,
+        side: THREE.DoubleSide
     });
 
     const terrain = new THREE.Mesh(terrainGeo, terrainMat);
@@ -494,12 +534,42 @@ function initScene() {
     // Water
     let waterLevel = -0.6;
     const waterGeo = new THREE.PlaneGeometry(terrainSize, terrainSize);
-    const waterMat = new THREE.MeshStandardMaterial({
-        color: 0x1e90ff,
-        flatShading: true,
+
+    const waterMat = new THREE.ShaderMaterial({ // Custom Shader 2
+        uniforms: {
+            uTime: { value: 0.0 },
+            uWaterColor: { value: new THREE.Color(0x1e90ff) }
+        },
+        vertexShader: `
+            uniform float uTime;
+            varying vec2 vUv;
+            varying float vElevation;
+            
+            void main() {
+                vUv = uv;
+                
+                vec3 pos = position;
+                
+                vElevation = pos.z;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform vec3 uWaterColor;
+            varying vec2 vUv;
+            varying float vElevation;
+            
+            void main() {
+                vec3 color = uWaterColor;
+                // Lighter where waves peak
+                color += vElevation * 0.5;
+                gl_FragColor = vec4(color, 0.6);
+            }
+        `,
         transparent: true,
-        opacity: 0.6
+        side: THREE.DoubleSide
     });
+
     const water = new THREE.Mesh(waterGeo, waterMat);
     water.rotation.x = -Math.PI / 2;
     water.position.y = waterLevel;
@@ -508,7 +578,7 @@ function initScene() {
     const waterClock = new THREE.Clock();
     function updateWater() {
         const t = waterClock.getElapsedTime();
-        water.position.y = waterLevel + (Math.sin(t * 0.5) * 0.05);
+        water.position.y = waterLevel + (Math.sin(t * 0.5) * 0.09);
     }
 
     // Clouds
@@ -741,12 +811,20 @@ function initScene() {
     function animate() {
         requestAnimationFrame(animate);
         const delta = Math.min(clock.getDelta(), 0.1);
-
+        
+        if (terrainMat.uniforms && terrainMat.uniforms.uTime) {
+            terrainMat.uniforms.uTime.value = clock.getElapsedTime();
+        }
+        
+        if (waterMat.uniforms && waterMat.uniforms.uTime) {
+            waterMat.uniforms.uTime.value = clock.getElapsedTime();
+        }
+        
         updateWater();
         updateParticles(delta);
         updateClouds(delta);
         controls.update();
-
+        
         renderer.render(scene, camera);
     }
 
