@@ -15,6 +15,12 @@ function createRockGeometry() {
         vertices[i] += (Math.random() - 0.5) * 0.4;
     }
 
+    const scale = 0.5 + Math.random() * 1.5; // Manual Scalation
+
+    for (let i = 0; i < vertices.length; i++) {
+        vertices[i] *= scale;
+    }
+
     const indices = [
         0, 1, 2,
         0, 2, 3,
@@ -67,14 +73,26 @@ function createConeGeometry(radius, height, segments = 6) {
 }
 
 //Line (Syarat)
-function addWorldOutline(scene, size, y = 0.02) {
+function addWorldOutline(scene, size, height, yOffset = -2.0) {
     const half = size / 2;
+    const yBottom = yOffset;
+    const yTop = height + yOffset;
 
     const points = [
-        -half, y, -half,  half, y, -half,
-         half, y, -half,  half, y,  half,
-         half, y,  half, -half, y,  half,
-        -half, y,  half, -half, y, -half
+        -half, yBottom, -half,   half, yBottom, -half,
+         half, yBottom, -half,   half, yBottom,  half,
+         half, yBottom,  half,  -half, yBottom,  half,
+        -half, yBottom,  half,  -half, yBottom, -half,
+
+        -half, yTop, -half,   half, yTop, -half,
+         half, yTop, -half,   half, yTop,  half,
+         half, yTop,  half,  -half, yTop,  half,
+        -half, yTop,  half,  -half, yTop, -half,
+
+        -half, yBottom, -half,  -half, yTop, -half,
+         half, yBottom, -half,   half, yTop, -half,
+         half, yBottom,  half,   half, yTop,  half,
+        -half, yBottom,  half,  -half, yTop,  half
     ];
 
     const geometry = new THREE.BufferGeometry();
@@ -83,10 +101,12 @@ function addWorldOutline(scene, size, y = 0.02) {
         new THREE.Float32BufferAttribute(points, 3)
     );
 
-    const material = new THREE.LineBasicMaterial({ color: 0x000000 });
+    const material = new THREE.LineBasicMaterial({
+        color: 0x000000
+    });
 
-    const outline = new THREE.LineSegments(geometry, material);
-    scene.add(outline);
+    const cube = new THREE.LineSegments(geometry, material);
+    scene.add(cube);
 }
 
 // Local Storage
@@ -254,7 +274,7 @@ function initScene() {
         });
     }
 
-    addWorldOutline(scene, terrainSize); //Line
+    addWorldOutline(scene, terrainSize, 25); //Line
 
     // Apply height to terrain
     for (let i = 0; i < pos.count; i++) {
