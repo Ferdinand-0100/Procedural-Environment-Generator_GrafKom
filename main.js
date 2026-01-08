@@ -67,25 +67,14 @@ function createConeGeometry(radius, height, segments = 6) {
 }
 
 //Line (Syarat)
-function addWorldOutline(size, y = 0.02) {
+function addWorldOutline(scene, size, y = 0.02) {
     const half = size / 2;
 
     const points = [
-        // bottom edge
-        -half, y, -half,
-         half, y, -half,
-
-        // right edge
-         half, y, -half,
-         half, y,  half,
-
-        // top edge
-         half, y,  half,
-        -half, y,  half,
-
-        // left edge
-        -half, y,  half,
-        -half, y, -half
+        -half, y, -half,  half, y, -half,
+         half, y, -half,  half, y,  half,
+         half, y,  half, -half, y,  half,
+        -half, y,  half, -half, y, -half
     ];
 
     const geometry = new THREE.BufferGeometry();
@@ -94,9 +83,7 @@ function addWorldOutline(size, y = 0.02) {
         new THREE.Float32BufferAttribute(points, 3)
     );
 
-    const material = new THREE.LineBasicMaterial({
-        color: 0x000000
-    });
+    const material = new THREE.LineBasicMaterial({ color: 0x000000 });
 
     const outline = new THREE.LineSegments(geometry, material);
     scene.add(outline);
