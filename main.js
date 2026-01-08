@@ -66,26 +66,40 @@ function createConeGeometry(radius, height, segments = 6) {
     return createCylinderGeometry(0, radius, height, segments);
 }
 
-// Outline (Untuk garis)
-function addOutline(mesh, {
-    color = 0x000000,
-    scale = 1.05
-} = {}) {
-    const outlineMat = new THREE.MeshBasicMaterial({
-        color,
-        side: THREE.BackSide
+//Line (Syarat)
+function addWorldOutline(size, y = 0.02) {
+    const half = size / 2;
+
+    const points = [
+        // bottom edge
+        -half, y, -half,
+         half, y, -half,
+
+        // right edge
+         half, y, -half,
+         half, y,  half,
+
+        // top edge
+         half, y,  half,
+        -half, y,  half,
+
+        // left edge
+        -half, y,  half,
+        -half, y, -half
+    ];
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(points, 3)
+    );
+
+    const material = new THREE.LineBasicMaterial({
+        color: 0x000000
     });
 
-    const outline = new THREE.Mesh(mesh.geometry, outlineMat);
-    outline.scale.multiplyScalar(scale);
-
-    // Match transforms
-    outline.position.copy(mesh.position);
-    outline.rotation.copy(mesh.rotation);
-
-    outline.renderOrder = mesh.renderOrder - 1;
-
-    mesh.add(outline);
+    const outline = new THREE.LineSegments(geometry, material);
+    scene.add(outline);
 }
 
 // Local Storage
@@ -253,6 +267,8 @@ function initScene() {
         });
     }
 
+    addWorldOutline(terrainSize); //Line
+
     // Apply height to terrain
     for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i);
@@ -403,10 +419,6 @@ function initScene() {
             Math.random() * Math.PI
         );
         rock.scale.setScalar(0.15 + Math.random() * 0.6);
-
-        addOutline(rock, { //Line tadi
-            scale: 1.08
-        });
 
         return rock;
     }
