@@ -418,9 +418,46 @@ function initScene() {
             5
         );
 
-        const trunkMat = new THREE.MeshStandardMaterial({
-            color: new THREE.Color().setHSL(0.08, 0.6, 0.35),
-            flatShading: true
+        const trunkMat = new THREE.ShaderMaterial({ // Custom Shader 3 (Gouraud)
+            uniforms: {
+                uLightPosition: { value: new THREE.Vector3(5, 10, 7) },
+                uLightColor: { value: new THREE.Color(0xffffff) },
+                uAmbient: { value: 0.4 },
+                uDiffuse: { value: 0.8 },
+                uObjectColor: { value: new THREE.Color().setHSL(0.08, 0.6, 0.35) }
+            },
+            vertexShader: `
+                uniform vec3 uLightPosition;
+                uniform vec3 uLightColor;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform vec3 uObjectColor;
+                
+                varying vec3 vColor;
+                
+                void main() {
+                    vec3 worldNormal = normalize(normalMatrix * normal);
+                    
+                    vec3 worldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                    
+                    vec3 lightDir = normalize(uLightPosition - worldPosition);
+                    
+                    float diffuse = max(dot(worldNormal, lightDir), 0.0);
+                    
+                    vec3 lighting = uLightColor * (uAmbient + uDiffuse * diffuse);
+                    
+                    vColor = uObjectColor * lighting;
+                    
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                varying vec3 vColor;
+                
+                void main() {
+                    gl_FragColor = vec4(vColor, 1.0);
+                }
+            `
         });
 
         const trunk = new THREE.Mesh(trunkGeo, trunkMat);
@@ -461,13 +498,67 @@ function initScene() {
     function createRock() {
         const geo = createRockGeometry();
 
+        const rockColor = new THREE.Color().setHSL(0, 0, 0.4 + Math.random() * 0.2);
+
         const rock = new THREE.Mesh(
             geo,
-            new THREE.MeshStandardMaterial({
-                color: new THREE.Color().setHSL(
-                    0, 0, 0.4 + Math.random() * 0.2
-                ),
-                flatShading: true
+            new THREE.ShaderMaterial({ // Custom Shader 4 (Phong)
+                uniforms: {
+                    uLightPosition: { value: new THREE.Vector3(5, 10, 7) },
+                    uLightColor: { value: new THREE.Color(0xffffff) },
+                    uCameraPosition: { value: new THREE.Vector3() },
+                    uAmbient: { value: 0.4 },
+                    uDiffuse: { value: 0.8 },
+                    uSpecular: { value: 0.3 },
+                    uShininess: { value: 30.0 },
+                    uObjectColor: { value: rockColor }
+                },
+                vertexShader: `
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    
+                    void main() {
+                        vNormal = normalize(normalMatrix * normal);
+                        
+                        vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                        
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 uLightPosition;
+                    uniform vec3 uLightColor;
+                    uniform vec3 uCameraPosition;
+                    uniform float uAmbient;
+                    uniform float uDiffuse;
+                    uniform float uSpecular;
+                    uniform float uShininess;
+                    uniform vec3 uObjectColor;
+                    
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    
+                    void main() {
+                        vec3 normal = normalize(vNormal);
+                        
+                        vec3 lightDir = normalize(uLightPosition - vPosition);
+                        
+                        float diffuse = max(dot(normal, lightDir), 0.0);
+                        
+                        vec3 viewDir = normalize(uCameraPosition - vPosition);
+                        vec3 halfDir = normalize(lightDir + viewDir);
+                        float specAngle = max(dot(normal, halfDir), 0.0);
+                        float specular = pow(specAngle, uShininess);
+                        
+                        vec3 ambient = uLightColor * uAmbient;
+                        vec3 diff = uLightColor * uDiffuse * diffuse;
+                        vec3 spec = uLightColor * uSpecular * specular;
+                        
+                        vec3 finalColor = uObjectColor * (ambient + diff) + spec;
+                        
+                        gl_FragColor = vec4(finalColor, 1.0);
+                    }
+                `
             })
         );
 
@@ -561,7 +652,6 @@ function initScene() {
             
             void main() {
                 vec3 color = uWaterColor;
-                // Lighter where waves peak
                 color += vElevation * 0.5;
                 gl_FragColor = vec4(color, 0.6);
             }
