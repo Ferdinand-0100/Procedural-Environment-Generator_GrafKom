@@ -254,7 +254,7 @@ function initScene() {
         });
     }
 
-    addWorldOutline(terrainSize); //Line
+    addWorldOutline(scene, terrainSize); //Line
 
     // Apply height to terrain
     for (let i = 0; i < pos.count; i++) {
