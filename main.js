@@ -15,10 +15,22 @@ function createRockGeometry() {
         vertices[i] += (Math.random() - 0.5) * 0.4;
     }
 
-    const scale = 0.5 + Math.random() * 1.5; // Manual Scalation
+    const scale = 0.5 + Math.random() * 1.2; // Manual Scalation
 
     for (let i = 0; i < vertices.length; i++) {
         vertices[i] *= scale;
+    }
+
+    const angle = Math.random() * Math.PI * 2; // Manual Rotation
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+
+    for (let i = 0; i < vertices.length; i += 3) {
+        const x = vertices[i];
+        const z = vertices[i + 2];
+
+        vertices[i]     = x * cos - z * sin;
+        vertices[i + 2] = x * sin + z * cos;
     }
 
     const indices = [
