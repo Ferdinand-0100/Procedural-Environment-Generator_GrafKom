@@ -770,21 +770,114 @@ function initScene() {
                     uDiffuse: { value: 0.8 },
                     uSpecular: { value: 0.3 },
                     uShininess: { value: 30.0 },
-                    uObjectColor: { value: rockColor }
+                    uObjectColor: { value: rockColor },
+                    
+                    // Manual matrices
+                    uModelMatrix: { value: new THREE.Matrix4() },
+                    uViewMatrix: { value: new THREE.Matrix4() },
+                    uProjectionMatrix: { value: new THREE.Matrix4() },
+                    uNormalMatrix: { value: new THREE.Matrix3() }
                 },
                 vertexShader: `
+                    precision highp float;
+                    
+                    uniform mat4 uModelMatrix;
+                    uniform mat4 uViewMatrix;
+                    uniform mat4 uProjectionMatrix;
+                    uniform mat3 uNormalMatrix;
+                    
                     varying vec3 vNormal;
                     varying vec3 vPosition;
                     
                     void main() {
-                        vNormal = normalize(normalMatrix * normal);
+                        // Step 1: Transform normal from object space to world space
+                        vec3 transformedNormal;
+                        transformedNormal.x = uNormalMatrix[0][0] * normal.x + 
+                                            uNormalMatrix[1][0] * normal.y + 
+                                            uNormalMatrix[2][0] * normal.z;
+                        transformedNormal.y = uNormalMatrix[0][1] * normal.x + 
+                                            uNormalMatrix[1][1] * normal.y + 
+                                            uNormalMatrix[2][1] * normal.z;
+                        transformedNormal.z = uNormalMatrix[0][2] * normal.x + 
+                                            uNormalMatrix[1][2] * normal.y + 
+                                            uNormalMatrix[2][2] * normal.z;
                         
-                        vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                        // Step 2: Normalize the transformed normal
+                        float normalLength = sqrt(
+                            transformedNormal.x * transformedNormal.x +
+                            transformedNormal.y * transformedNormal.y +
+                            transformedNormal.z * transformedNormal.z
+                        );
+                        vNormal.x = transformedNormal.x / normalLength;
+                        vNormal.y = transformedNormal.y / normalLength;
+                        vNormal.z = transformedNormal.z / normalLength;
                         
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        // Step 3: Transform position from object space to world space
+                        vec4 worldPos4;
+                        worldPos4.x = uModelMatrix[0][0] * position.x + 
+                                    uModelMatrix[1][0] * position.y + 
+                                    uModelMatrix[2][0] * position.z + 
+                                    uModelMatrix[3][0];
+                        worldPos4.y = uModelMatrix[0][1] * position.x + 
+                                    uModelMatrix[1][1] * position.y + 
+                                    uModelMatrix[2][1] * position.z + 
+                                    uModelMatrix[3][1];
+                        worldPos4.z = uModelMatrix[0][2] * position.x + 
+                                    uModelMatrix[1][2] * position.y + 
+                                    uModelMatrix[2][2] * position.z + 
+                                    uModelMatrix[3][2];
+                        worldPos4.w = uModelMatrix[0][3] * position.x + 
+                                    uModelMatrix[1][3] * position.y + 
+                                    uModelMatrix[2][3] * position.z + 
+                                    uModelMatrix[3][3];
+                        
+                        vPosition = worldPos4.xyz;
+                        
+                        // Step 4: Transform position to view space
+                        vec4 viewPos;
+                        viewPos.x = uViewMatrix[0][0] * worldPos4.x + 
+                                    uViewMatrix[1][0] * worldPos4.y + 
+                                    uViewMatrix[2][0] * worldPos4.z + 
+                                    uViewMatrix[3][0] * worldPos4.w;
+                        viewPos.y = uViewMatrix[0][1] * worldPos4.x + 
+                                    uViewMatrix[1][1] * worldPos4.y + 
+                                    uViewMatrix[2][1] * worldPos4.z + 
+                                    uViewMatrix[3][1] * worldPos4.w;
+                        viewPos.z = uViewMatrix[0][2] * worldPos4.x + 
+                                    uViewMatrix[1][2] * worldPos4.y + 
+                                    uViewMatrix[2][2] * worldPos4.z + 
+                                    uViewMatrix[3][2] * worldPos4.w;
+                        viewPos.w = uViewMatrix[0][3] * worldPos4.x + 
+                                    uViewMatrix[1][3] * worldPos4.y + 
+                                    uViewMatrix[2][3] * worldPos4.z + 
+                                    uViewMatrix[3][3] * worldPos4.w;
+                        
+                        // Step 5: Transform view position to clip space
+                        vec4 clipPos;
+                        clipPos.x = uProjectionMatrix[0][0] * viewPos.x + 
+                                    uProjectionMatrix[1][0] * viewPos.y + 
+                                    uProjectionMatrix[2][0] * viewPos.z + 
+                                    uProjectionMatrix[3][0] * viewPos.w;
+                        clipPos.y = uProjectionMatrix[0][1] * viewPos.x + 
+                                    uProjectionMatrix[1][1] * viewPos.y + 
+                                    uProjectionMatrix[2][1] * viewPos.z + 
+                                    uProjectionMatrix[3][1] * viewPos.w;
+                        clipPos.z = uProjectionMatrix[0][2] * viewPos.x + 
+                                    uProjectionMatrix[1][2] * viewPos.y + 
+                                    uProjectionMatrix[2][2] * viewPos.z + 
+                                    uProjectionMatrix[3][2] * viewPos.w;
+                        clipPos.w = uProjectionMatrix[0][3] * viewPos.x + 
+                                    uProjectionMatrix[1][3] * viewPos.y + 
+                                    uProjectionMatrix[2][3] * viewPos.z + 
+                                    uProjectionMatrix[3][3] * viewPos.w;
+                        
+                        // Step 6: Output final clip space position
+                        gl_Position = clipPos;
                     }
                 `,
                 fragmentShader: `
+                    precision highp float;
+                    
                     uniform vec3 uLightPosition;
                     uniform vec3 uLightColor;
                     uniform vec3 uCameraPosition;
@@ -798,28 +891,157 @@ function initScene() {
                     varying vec3 vPosition;
                     
                     void main() {
-                        vec3 normal = normalize(vNormal);
+                        // Step 1: Re-normalize the interpolated normal
+                        float normalLength = sqrt(
+                            vNormal.x * vNormal.x +
+                            vNormal.y * vNormal.y +
+                            vNormal.z * vNormal.z
+                        );
+                        vec3 normal;
+                        normal.x = vNormal.x / normalLength;
+                        normal.y = vNormal.y / normalLength;
+                        normal.z = vNormal.z / normalLength;
                         
-                        vec3 lightDir = normalize(uLightPosition - vPosition);
+                        // Step 2: Calculate light direction vector
+                        vec3 lightDir;
+                        lightDir.x = uLightPosition.x - vPosition.x;
+                        lightDir.y = uLightPosition.y - vPosition.y;
+                        lightDir.z = uLightPosition.z - vPosition.z;
                         
-                        float diffuse = max(dot(normal, lightDir), 0.0);
+                        // Step 3: Normalize light direction
+                        float lightDirLength = sqrt(
+                            lightDir.x * lightDir.x +
+                            lightDir.y * lightDir.y +
+                            lightDir.z * lightDir.z
+                        );
+                        vec3 normalizedLightDir;
+                        normalizedLightDir.x = lightDir.x / lightDirLength;
+                        normalizedLightDir.y = lightDir.y / lightDirLength;
+                        normalizedLightDir.z = lightDir.z / lightDirLength;
                         
-                        vec3 viewDir = normalize(uCameraPosition - vPosition);
-                        vec3 halfDir = normalize(lightDir + viewDir);
-                        float specAngle = max(dot(normal, halfDir), 0.0);
-                        float specular = pow(specAngle, uShininess);
+                        // Step 4: Calculate diffuse dot product (N · L)
+                        float diffuseDot = 
+                            normal.x * normalizedLightDir.x +
+                            normal.y * normalizedLightDir.y +
+                            normal.z * normalizedLightDir.z;
                         
-                        vec3 ambient = uLightColor * uAmbient;
-                        vec3 diff = uLightColor * uDiffuse * diffuse;
-                        vec3 spec = uLightColor * uSpecular * specular;
+                        // Step 5: Clamp diffuse to positive values
+                        float diffuseIntensity = diffuseDot;
+                        if (diffuseIntensity < 0.0) {
+                            diffuseIntensity = 0.0;
+                        }
                         
-                        vec3 finalColor = uObjectColor * (ambient + diff) + spec;
+                        // Step 6: Calculate view direction vector
+                        vec3 viewDir;
+                        viewDir.x = uCameraPosition.x - vPosition.x;
+                        viewDir.y = uCameraPosition.y - vPosition.y;
+                        viewDir.z = uCameraPosition.z - vPosition.z;
                         
-                        gl_FragColor = vec4(finalColor, 1.0);
+                        // Step 7: Normalize view direction
+                        float viewDirLength = sqrt(
+                            viewDir.x * viewDir.x +
+                            viewDir.y * viewDir.y +
+                            viewDir.z * viewDir.z
+                        );
+                        vec3 normalizedViewDir;
+                        normalizedViewDir.x = viewDir.x / viewDirLength;
+                        normalizedViewDir.y = viewDir.y / viewDirLength;
+                        normalizedViewDir.z = viewDir.z / viewDirLength;
+                        
+                        // Step 8: Calculate half vector (Blinn-Phong)
+                        vec3 halfVector;
+                        halfVector.x = normalizedLightDir.x + normalizedViewDir.x;
+                        halfVector.y = normalizedLightDir.y + normalizedViewDir.y;
+                        halfVector.z = normalizedLightDir.z + normalizedViewDir.z;
+                        
+                        // Step 9: Normalize half vector
+                        float halfVectorLength = sqrt(
+                            halfVector.x * halfVector.x +
+                            halfVector.y * halfVector.y +
+                            halfVector.z * halfVector.z
+                        );
+                        vec3 normalizedHalfDir;
+                        normalizedHalfDir.x = halfVector.x / halfVectorLength;
+                        normalizedHalfDir.y = halfVector.y / halfVectorLength;
+                        normalizedHalfDir.z = halfVector.z / halfVectorLength;
+                        
+                        // Step 10: Calculate specular dot product (N · H)
+                        float specularDot = 
+                            normal.x * normalizedHalfDir.x +
+                            normal.y * normalizedHalfDir.y +
+                            normal.z * normalizedHalfDir.z;
+                        
+                        // Step 11: Clamp specular angle to positive values
+                        float specularAngle = specularDot;
+                        if (specularAngle < 0.0) {
+                            specularAngle = 0.0;
+                        }
+                        
+                        // Step 12: Calculate specular intensity (manual pow)
+                        // pow(x, n) = exp(n * log(x))
+                        float specularIntensity = 0.0;
+                        if (specularAngle > 0.0) {
+                            // Manual power calculation for shininess
+                            specularIntensity = pow(specularAngle, uShininess);
+                        }
+                        
+                        // Step 13: Calculate ambient component
+                        vec3 ambientComponent;
+                        ambientComponent.r = uLightColor.r * uAmbient;
+                        ambientComponent.g = uLightColor.g * uAmbient;
+                        ambientComponent.b = uLightColor.b * uAmbient;
+                        
+                        // Step 14: Calculate diffuse component
+                        float scaledDiffuse = uDiffuse * diffuseIntensity;
+                        vec3 diffuseComponent;
+                        diffuseComponent.r = uLightColor.r * scaledDiffuse;
+                        diffuseComponent.g = uLightColor.g * scaledDiffuse;
+                        diffuseComponent.b = uLightColor.b * scaledDiffuse;
+                        
+                        // Step 15: Calculate specular component
+                        float scaledSpecular = uSpecular * specularIntensity;
+                        vec3 specularComponent;
+                        specularComponent.r = uLightColor.r * scaledSpecular;
+                        specularComponent.g = uLightColor.g * scaledSpecular;
+                        specularComponent.b = uLightColor.b * scaledSpecular;
+                        
+                        // Step 16: Combine ambient and diffuse
+                        vec3 ambientPlusDiffuse;
+                        ambientPlusDiffuse.r = ambientComponent.r + diffuseComponent.r;
+                        ambientPlusDiffuse.g = ambientComponent.g + diffuseComponent.g;
+                        ambientPlusDiffuse.b = ambientComponent.b + diffuseComponent.b;
+                        
+                        // Step 17: Multiply object color by (ambient + diffuse)
+                        vec3 coloredLighting;
+                        coloredLighting.r = uObjectColor.r * ambientPlusDiffuse.r;
+                        coloredLighting.g = uObjectColor.g * ambientPlusDiffuse.g;
+                        coloredLighting.b = uObjectColor.b * ambientPlusDiffuse.b;
+                        
+                        // Step 18: Add specular highlight
+                        vec3 finalColor;
+                        finalColor.r = coloredLighting.r + specularComponent.r;
+                        finalColor.g = coloredLighting.g + specularComponent.g;
+                        finalColor.b = coloredLighting.b + specularComponent.b;
+                        
+                        // Step 19: Output final fragment color
+                        gl_FragColor = vec4(finalColor.r, finalColor.g, finalColor.b, 1.0);
                     }
                 `
             })
         );
+
+        function updateRockUniforms() {
+            rock.material.uniforms.uModelMatrix.value.copy(rock.matrixWorld);
+            rock.material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
+            rock.material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
+            
+            const normalMatrix = new THREE.Matrix3();
+            normalMatrix.getNormalMatrix(rock.matrixWorld);
+            rock.material.uniforms.uNormalMatrix.value.copy(normalMatrix);
+            
+            // Update camera position for specular calculations
+            rock.material.uniforms.uCameraPosition.value.copy(camera.position);
+        }
 
         rock.castShadow = true;
         rock.rotation.set(
@@ -1270,6 +1492,7 @@ function initScene() {
         updateTerrainUniforms();
         updateDepthUniforms();
         updateTrunkUniforms();
+        updateRockUniforms();
         renderer.render(scene, camera);
     }
 
