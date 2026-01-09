@@ -533,41 +533,191 @@ function initScene() {
                 uLightColor: { value: new THREE.Color(0xffffff) },
                 uAmbient: { value: 0.4 },
                 uDiffuse: { value: 0.8 },
-                uObjectColor: { value: new THREE.Color().setHSL(0.08, 0.6, 0.35) }
+                uObjectColor: { value: new THREE.Color().setHSL(0.08, 0.6, 0.35) },
+                
+                // Manual matrices
+                uModelMatrix: { value: new THREE.Matrix4() },
+                uViewMatrix: { value: new THREE.Matrix4() },
+                uProjectionMatrix: { value: new THREE.Matrix4() },
+                uNormalMatrix: { value: new THREE.Matrix3() }
             },
             vertexShader: `
+                precision highp float;
+                
                 uniform vec3 uLightPosition;
                 uniform vec3 uLightColor;
                 uniform float uAmbient;
                 uniform float uDiffuse;
                 uniform vec3 uObjectColor;
+                uniform mat4 uModelMatrix;
+                uniform mat4 uViewMatrix;
+                uniform mat4 uProjectionMatrix;
+                uniform mat3 uNormalMatrix;
                 
                 varying vec3 vColor;
                 
                 void main() {
-                    vec3 worldNormal = normalize(normalMatrix * normal);
+                    // Step 1: Transform normal from object space to world space
+                    vec3 transformedNormal;
+                    transformedNormal.x = uNormalMatrix[0][0] * normal.x + 
+                                        uNormalMatrix[1][0] * normal.y + 
+                                        uNormalMatrix[2][0] * normal.z;
+                    transformedNormal.y = uNormalMatrix[0][1] * normal.x + 
+                                        uNormalMatrix[1][1] * normal.y + 
+                                        uNormalMatrix[2][1] * normal.z;
+                    transformedNormal.z = uNormalMatrix[0][2] * normal.x + 
+                                        uNormalMatrix[1][2] * normal.y + 
+                                        uNormalMatrix[2][2] * normal.z;
                     
-                    vec3 worldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                    // Step 2: Normalize the transformed normal
+                    float normalLength = sqrt(
+                        transformedNormal.x * transformedNormal.x +
+                        transformedNormal.y * transformedNormal.y +
+                        transformedNormal.z * transformedNormal.z
+                    );
+                    vec3 worldNormal;
+                    worldNormal.x = transformedNormal.x / normalLength;
+                    worldNormal.y = transformedNormal.y / normalLength;
+                    worldNormal.z = transformedNormal.z / normalLength;
                     
-                    vec3 lightDir = normalize(uLightPosition - worldPosition);
+                    // Step 3: Transform position from object space to world space
+                    vec4 worldPos4;
+                    worldPos4.x = uModelMatrix[0][0] * position.x + 
+                                uModelMatrix[1][0] * position.y + 
+                                uModelMatrix[2][0] * position.z + 
+                                uModelMatrix[3][0];
+                    worldPos4.y = uModelMatrix[0][1] * position.x + 
+                                uModelMatrix[1][1] * position.y + 
+                                uModelMatrix[2][1] * position.z + 
+                                uModelMatrix[3][1];
+                    worldPos4.z = uModelMatrix[0][2] * position.x + 
+                                uModelMatrix[1][2] * position.y + 
+                                uModelMatrix[2][2] * position.z + 
+                                uModelMatrix[3][2];
+                    worldPos4.w = uModelMatrix[0][3] * position.x + 
+                                uModelMatrix[1][3] * position.y + 
+                                uModelMatrix[2][3] * position.z + 
+                                uModelMatrix[3][3];
                     
-                    float diffuse = max(dot(worldNormal, lightDir), 0.0);
+                    vec3 worldPosition = worldPos4.xyz;
                     
-                    vec3 lighting = uLightColor * (uAmbient + uDiffuse * diffuse);
+                    // Step 4: Calculate light direction vector
+                    vec3 lightDir;
+                    lightDir.x = uLightPosition.x - worldPosition.x;
+                    lightDir.y = uLightPosition.y - worldPosition.y;
+                    lightDir.z = uLightPosition.z - worldPosition.z;
                     
-                    vColor = uObjectColor * lighting;
+                    // Step 5: Normalize light direction
+                    float lightDirLength = sqrt(
+                        lightDir.x * lightDir.x +
+                        lightDir.y * lightDir.y +
+                        lightDir.z * lightDir.z
+                    );
+                    vec3 normalizedLightDir;
+                    normalizedLightDir.x = lightDir.x / lightDirLength;
+                    normalizedLightDir.y = lightDir.y / lightDirLength;
+                    normalizedLightDir.z = lightDir.z / lightDirLength;
                     
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    // Step 6: Calculate dot product (N · L)
+                    float dotProduct = 
+                        worldNormal.x * normalizedLightDir.x +
+                        worldNormal.y * normalizedLightDir.y +
+                        worldNormal.z * normalizedLightDir.z;
+                    
+                    // Step 7: Clamp dot product to positive values
+                    float diffuseIntensity = dotProduct;
+                    if (diffuseIntensity < 0.0) {
+                        diffuseIntensity = 0.0;
+                    }
+                    
+                    // Step 8: Scale diffuse by strength factor
+                    float scaledDiffuse = uDiffuse * diffuseIntensity;
+                    
+                    // Step 9: Combine ambient and diffuse
+                    float totalIntensity = uAmbient + scaledDiffuse;
+                    
+                    // Step 10: Apply light color to intensity
+                    vec3 lighting;
+                    lighting.r = uLightColor.r * totalIntensity;
+                    lighting.g = uLightColor.g * totalIntensity;
+                    lighting.b = uLightColor.b * totalIntensity;
+                    
+                    // Step 11: Multiply object color by lighting (Gouraud shading happens here!)
+                    vColor.r = uObjectColor.r * lighting.r;
+                    vColor.g = uObjectColor.g * lighting.g;
+                    vColor.b = uObjectColor.b * lighting.b;
+                    
+                    // Step 12: Transform position to view space
+                    vec4 viewPos;
+                    viewPos.x = uViewMatrix[0][0] * worldPos4.x + 
+                                uViewMatrix[1][0] * worldPos4.y + 
+                                uViewMatrix[2][0] * worldPos4.z + 
+                                uViewMatrix[3][0] * worldPos4.w;
+                    viewPos.y = uViewMatrix[0][1] * worldPos4.x + 
+                                uViewMatrix[1][1] * worldPos4.y + 
+                                uViewMatrix[2][1] * worldPos4.z + 
+                                uViewMatrix[3][1] * worldPos4.w;
+                    viewPos.z = uViewMatrix[0][2] * worldPos4.x + 
+                                uViewMatrix[1][2] * worldPos4.y + 
+                                uViewMatrix[2][2] * worldPos4.z + 
+                                uViewMatrix[3][2] * worldPos4.w;
+                    viewPos.w = uViewMatrix[0][3] * worldPos4.x + 
+                                uViewMatrix[1][3] * worldPos4.y + 
+                                uViewMatrix[2][3] * worldPos4.z + 
+                                uViewMatrix[3][3] * worldPos4.w;
+                    
+                    // Step 13: Transform view position to clip space
+                    vec4 clipPos;
+                    clipPos.x = uProjectionMatrix[0][0] * viewPos.x + 
+                                uProjectionMatrix[1][0] * viewPos.y + 
+                                uProjectionMatrix[2][0] * viewPos.z + 
+                                uProjectionMatrix[3][0] * viewPos.w;
+                    clipPos.y = uProjectionMatrix[0][1] * viewPos.x + 
+                                uProjectionMatrix[1][1] * viewPos.y + 
+                                uProjectionMatrix[2][1] * viewPos.z + 
+                                uProjectionMatrix[3][1] * viewPos.w;
+                    clipPos.z = uProjectionMatrix[0][2] * viewPos.x + 
+                                uProjectionMatrix[1][2] * viewPos.y + 
+                                uProjectionMatrix[2][2] * viewPos.z + 
+                                uProjectionMatrix[3][2] * viewPos.w;
+                    clipPos.w = uProjectionMatrix[0][3] * viewPos.x + 
+                                uProjectionMatrix[1][3] * viewPos.y + 
+                                uProjectionMatrix[2][3] * viewPos.z + 
+                                uProjectionMatrix[3][3] * viewPos.w;
+                    
+                    // Step 14: Output final clip space position
+                    gl_Position = clipPos;
                 }
             `,
             fragmentShader: `
+                precision highp float;
+                
                 varying vec3 vColor;
                 
                 void main() {
-                    gl_FragColor = vec4(vColor, 1.0);
+                    // Step 1: Extract RGB components from interpolated color
+                    float red = vColor.r;
+                    float green = vColor.g;
+                    float blue = vColor.b;
+                    
+                    // Step 2: Set alpha to full opacity
+                    float alpha = 1.0;
+                    
+                    // Step 3: Output final fragment color
+                    gl_FragColor = vec4(red, green, blue, alpha);
                 }
             `
         });
+
+        function updateTrunkUniforms() {
+            trunkMat.uniforms.uModelMatrix.value.copy(trunk.matrixWorld);
+            trunkMat.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
+            trunkMat.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
+            
+            const normalMatrix = new THREE.Matrix3();
+            normalMatrix.getNormalMatrix(trunk.matrixWorld);
+            trunkMat.uniforms.uNormalMatrix.value.copy(normalMatrix);
+        }
 
         const trunk = new THREE.Mesh(trunkGeo, trunkMat);
         trunk.position.y = trunkHeight / 2;
@@ -1119,6 +1269,7 @@ function initScene() {
 
         updateTerrainUniforms();
         updateDepthUniforms();
+        updateTrunkUniforms();
         renderer.render(scene, camera);
     }
 
