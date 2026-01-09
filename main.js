@@ -896,6 +896,57 @@ function initScene() {
         if (weatherType === 'snow') applySnowOverlay();
     });
 
+    // Z-Buffer for 3D
+    let zBufferEnabled = false;
+    const originalTerrainMaterial = terrainMat;
+    
+    const depthMaterial = new THREE.ShaderMaterial({
+        vertexShader: `
+            varying float vDepth;
+            
+            void main() {
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+                
+                vDepth = -mvPosition.z;
+            }
+        `,
+        fragmentShader: `
+            varying float vDepth;
+            uniform float cameraNear;
+            uniform float cameraFar;
+            
+            void main() {
+                float depth = (vDepth - cameraNear) / (cameraFar - cameraNear);
+                depth = clamp(depth, 0.0, 1.0);
+                
+                float brightness = 1.0 - depth;
+                
+                gl_FragColor = vec4(vec3(brightness), 1.0);
+            }
+        `,
+        uniforms: {
+            cameraNear: { value: camera.near },
+            cameraFar: { value: 50.0 }
+        },
+        side: THREE.DoubleSide
+    });
+
+    const zBufferToggle = document.getElementById('zBufferToggle');
+    zBufferToggle.addEventListener('change', (e) => {
+        zBufferEnabled = e.target.checked;
+        
+        if (zBufferEnabled) {
+            terrain.material = depthMaterial;
+            sky.visible = false;
+            water.visible = false;
+        } else {
+            terrain.material = originalTerrainMaterial;
+            sky.visible = true;
+            water.visible = true;
+        }
+    });
+
     const clock = new THREE.Clock();
 
     function animate() {
