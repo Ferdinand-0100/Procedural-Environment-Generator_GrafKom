@@ -515,6 +515,16 @@ function initScene() {
         return hits.length > 0 ? hits[0].point.y : null;
     }
 
+    function updateTrunkUniforms() {
+        trunkMat.uniforms.uModelMatrix.value.copy(trunk.matrixWorld);
+        trunkMat.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
+        trunkMat.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
+        
+        const normalMatrix = new THREE.Matrix3();
+        normalMatrix.getNormalMatrix(trunk.matrixWorld);
+        trunkMat.uniforms.uNormalMatrix.value.copy(normalMatrix);
+    }
+
     // Trees
     function createTree() {
         const tree = new THREE.Group();
@@ -708,16 +718,6 @@ function initScene() {
                 }
             `
         });
-
-        function updateTrunkUniforms() {
-            trunkMat.uniforms.uModelMatrix.value.copy(trunk.matrixWorld);
-            trunkMat.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
-            trunkMat.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
-            
-            const normalMatrix = new THREE.Matrix3();
-            normalMatrix.getNormalMatrix(trunk.matrixWorld);
-            trunkMat.uniforms.uNormalMatrix.value.copy(normalMatrix);
-        }
 
         const trunk = new THREE.Mesh(trunkGeo, trunkMat);
         trunk.position.y = trunkHeight / 2;
@@ -1030,19 +1030,6 @@ function initScene() {
             })
         );
 
-        function updateRockUniforms() {
-            rock.material.uniforms.uModelMatrix.value.copy(rock.matrixWorld);
-            rock.material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
-            rock.material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
-            
-            const normalMatrix = new THREE.Matrix3();
-            normalMatrix.getNormalMatrix(rock.matrixWorld);
-            rock.material.uniforms.uNormalMatrix.value.copy(normalMatrix);
-            
-            // Update camera position for specular calculations
-            rock.material.uniforms.uCameraPosition.value.copy(camera.position);
-        }
-
         rock.castShadow = true;
         rock.rotation.set(
             Math.random() * Math.PI,
@@ -1052,6 +1039,19 @@ function initScene() {
         rock.scale.setScalar(0.15 + Math.random() * 0.6);
 
         return rock;
+    }
+
+    function updateRockUniforms() {
+        rock.material.uniforms.uModelMatrix.value.copy(rock.matrixWorld);
+        rock.material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
+        rock.material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
+        
+        const normalMatrix = new THREE.Matrix3();
+        normalMatrix.getNormalMatrix(rock.matrixWorld);
+        rock.material.uniforms.uNormalMatrix.value.copy(normalMatrix);
+        
+        // Update camera position for specular calculations
+        rock.material.uniforms.uCameraPosition.value.copy(camera.position);
     }
 
     // Object Scattering
