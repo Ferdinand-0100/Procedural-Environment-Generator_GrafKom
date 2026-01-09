@@ -224,6 +224,8 @@ regenerateButton.addEventListener('click', () => {
 
 // Scene Initialization
 function initScene() {
+    const trees = [];
+    const rocks = [];
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x87ceeb, 20, 80);
 
@@ -515,16 +517,6 @@ function initScene() {
         return hits.length > 0 ? hits[0].point.y : null;
     }
 
-    function updateTrunkUniforms() {
-        trunkMat.uniforms.uModelMatrix.value.copy(trunk.matrixWorld);
-        trunkMat.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
-        trunkMat.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
-        
-        const normalMatrix = new THREE.Matrix3();
-        normalMatrix.getNormalMatrix(trunk.matrixWorld);
-        trunkMat.uniforms.uNormalMatrix.value.copy(normalMatrix);
-    }
-
     // Trees
     function createTree() {
         const tree = new THREE.Group();
@@ -723,6 +715,7 @@ function initScene() {
         trunk.position.y = trunkHeight / 2;
         trunk.castShadow = true;
         tree.add(trunk);
+        tree.userData.trunk = trunk;
 
         const numCones = 1 + Math.floor(Math.random() * 2);
 
@@ -1041,19 +1034,6 @@ function initScene() {
         return rock;
     }
 
-    function updateRockUniforms() {
-        rock.material.uniforms.uModelMatrix.value.copy(rock.matrixWorld);
-        rock.material.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
-        rock.material.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
-        
-        const normalMatrix = new THREE.Matrix3();
-        normalMatrix.getNormalMatrix(rock.matrixWorld);
-        rock.material.uniforms.uNormalMatrix.value.copy(normalMatrix);
-        
-        // Update camera position for specular calculations
-        rock.material.uniforms.uCameraPosition.value.copy(camera.position);
-    }
-
     // Object Scattering
     function scatterTrees(count, minH, maxH) {
         let placed = 0;
@@ -1067,6 +1047,7 @@ function initScene() {
                 const tree = createTree();
                 if (placeObjectOnTerrain(tree, x, z)) {
                     scene.add(tree);
+                    trees.push(tree);
                     placed++;
                 }
             }
@@ -1086,6 +1067,7 @@ function initScene() {
                 const rock = createRock();
                 if (placeObjectOnTerrain(rock, x, z)) {
                     scene.add(rock);
+                    rocks.push(rock);
                     placed++;
                 }
             }
@@ -1472,6 +1454,37 @@ function initScene() {
 
     const clock = new THREE.Clock();
 
+    function updateAllTrunkUniforms() {
+        trees.forEach(tree => {
+            const trunk = tree.userData.trunk;
+            const mat = trunk.material;
+            
+            mat.uniforms.uModelMatrix.value.copy(trunk.matrixWorld);
+            mat.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
+            mat.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
+            
+            const normalMatrix = new THREE.Matrix3();
+            normalMatrix.getNormalMatrix(trunk.matrixWorld);
+            mat.uniforms.uNormalMatrix.value.copy(normalMatrix);
+        });
+    }
+
+    function updateAllRockUniforms() {
+        rocks.forEach(rock => {
+            const mat = rock.material;
+            
+            mat.uniforms.uModelMatrix.value.copy(rock.matrixWorld);
+            mat.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
+            mat.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
+            
+            const normalMatrix = new THREE.Matrix3();
+            normalMatrix.getNormalMatrix(rock.matrixWorld);
+            mat.uniforms.uNormalMatrix.value.copy(normalMatrix);
+            
+            mat.uniforms.uCameraPosition.value.copy(camera.position);
+        });
+    }
+
     function animate() {
         requestAnimationFrame(animate);
         const delta = Math.min(clock.getDelta(), 0.1);
@@ -1491,8 +1504,9 @@ function initScene() {
 
         updateTerrainUniforms();
         updateDepthUniforms();
-        updateTrunkUniforms();
-        updateRockUniforms();
+        updateAllTrunkUniforms();
+        updateAllRockUniforms();
+        
         renderer.render(scene, camera);
     }
 
