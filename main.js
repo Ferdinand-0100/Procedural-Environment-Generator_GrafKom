@@ -914,48 +914,38 @@ function initScene() {
 
     // Update matrices manually
     function updateDepthUniforms() {
-        depthMaterial.uniforms.uModelMatrix.value
-            .copy(terrain.matrixWorld);
-
-        depthMaterial.uniforms.uViewMatrix.value
-            .copy(camera.matrixWorldInverse);
-
-        depthMaterial.uniforms.uProjectionMatrix.value
-            .copy(camera.projectionMatrix);
+        depthMaterial.uniforms.uModelMatrix.value.copy(terrain.matrixWorld);
+        depthMaterial.uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse);
+        depthMaterial.uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix);
     }
     
     const depthMaterial = new THREE.ShaderMaterial({
         vertexShader: `
             precision highp float;
 
-            attribute vec3 position;
+            // Remove this line - position is built-in
+            // attribute vec3 position;
 
             uniform mat4 uModelMatrix;
             uniform mat4 uViewMatrix;
             uniform mat4 uProjectionMatrix;
 
             varying float vDepthView;
-            varying float vDepthClip;
 
             void main() {
-
-                // Step 1: Object space ke World space
+                // Step 1: Object space to World space
                 vec4 worldPosition = uModelMatrix * vec4(position, 1.0);
 
-                // Step 2: World space ke View (camera) space
+                // Step 2: World space to View (camera) space
                 vec4 viewPosition = uViewMatrix * worldPosition;
 
-                // Step 3: View space ke Clip space
+                // Step 3: View space to Clip space
                 vec4 clipPosition = uProjectionMatrix * viewPosition;
 
                 gl_Position = clipPosition;
 
-                // Step 4: Extract depth manually
-                // View space Z is negative in front of camera
+                // Step 4: Extract depth
                 vDepthView = -viewPosition.z;
-
-                // Step 5: Also store clip-space depth
-                vDepthClip = clipPosition.z / clipPosition.w;
             }
         `,
         fragmentShader: `
@@ -965,36 +955,16 @@ function initScene() {
             uniform float uCameraFar;
 
             varying float vDepthView;
-            varying float vDepthClip;
 
             void main() {
+                // Normalize depth
+                float depth = (vDepthView - uCameraNear) / (uCameraFar - uCameraNear);
+                depth = clamp(depth, 0.0, 1.0);
+                
+                // Convert to brightness
+                float brightness = 1.0 - depth;
 
-                // Step 1: Compute depth range
-                float depthRange = uCameraFar - uCameraNear;
-
-                // Step 2: Shift depth into near-based space
-                float shiftedDepth = vDepthView - uCameraNear;
-
-                // Step 3: Normalize depth
-                float normalizedDepth = shiftedDepth / depthRange;
-
-                // Step 4: Manual clamp
-                if (normalizedDepth < 0.0) {
-                    normalizedDepth = 0.0;
-                }
-                if (normalizedDepth > 1.0) {
-                    normalizedDepth = 1.0;
-                }
-
-                // Step 5: Convert depth to brightness
-                float brightness = 1.0 - normalizedDepth;
-
-                // Step 6: Expand grayscale
-                float r = brightness;
-                float g = brightness;
-                float b = brightness;
-
-                gl_FragColor = vec4(r, g, b, 1.0);
+                gl_FragColor = vec4(vec3(brightness), 1.0);
             }
         `,
         uniforms: depthUniforms,
@@ -1038,6 +1008,7 @@ function initScene() {
         updateClouds(delta);
         controls.update();
 
+        updateDepthUniforms();
         renderer.render(scene, camera);
     }
 
